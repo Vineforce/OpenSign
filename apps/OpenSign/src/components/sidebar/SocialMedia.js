@@ -18,7 +18,7 @@ const SocialMedia = () => {
         </span>
       </NavLink>
       <NavLink
-        to="https://www.linkedin.com/company/opensign%E2%84%A2/"
+        to="https://www.linkedin.com/company/excis-compliance"
         target="_blank"
         rel="noopener noreferrer"
       >
@@ -28,7 +28,7 @@ const SocialMedia = () => {
         </span>
       </NavLink>
       <NavLink
-        to="https://www.twitter.com/opensignlabs"
+        to="https://twitter.com/excisl"
         target="_blank"
         rel="noopener noreferrer"
       >
