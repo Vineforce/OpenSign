@@ -1,6 +1,6 @@
 name: Publish Image to Docker Hub
 on:
-  workflow_dispatch:  # for manual trigger
+  [workflow_dispatch]  # for manual trigger
 
 jobs:
   publish_image:
