@@ -1,6 +1,6 @@
 name: Publish Image to Docker Hub
 on:
-  [workflow_dispatch]  # for manual trigger
+  [workflow_dispatch]
 
 jobs:
   publish_image:
@@ -9,9 +9,9 @@ jobs:
       - name: checkout
         uses: actions/checkout@v3
       - name: build
-        run: |
-          docker build . -t ${{ secrets.DOCKERHUB_USERNAME }}/hello-docker-hub-imagename:latest
+       run: |
+        docker build . -t ${{secrets.DOCKERHUB_USERNAME}}/hello-docker-hub-imagename: latest
       - name: publish
-        run: |
-          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/hello-docker-hub-imagename:latest
+      run: |
+        docker login -u ${{secrets.DOCKERHUB_USERNAME}} -p ${{secrets.DOCKERHUB_TOKEN}}
+        docker push ${{secrets.DOCKERHUB_USERNAME}}/hello-docker-hub-imagename: latest
