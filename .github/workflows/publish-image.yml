@@ -1,13 +1,14 @@
-name: Publish  Image to Docker Hub
+name: Publish Image to Docker Hub
 on:
   [workflow_dispatch]
+
 jobs:
   publish_image:
     runs-on: ubuntu-latest
     steps:
-      -name: checkout
+      - name: checkout
       uses:actions/checkout@v3
-      -name: build
+      - name: build
        run:
         docker build . -t amitkumarvineforce/hello-docker-hub-imagename: latest
       - name: publish
