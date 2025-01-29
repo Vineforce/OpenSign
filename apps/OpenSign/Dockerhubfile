@@ -1,6 +1,36 @@
 # Use an official Node runtime as the base image
 FROM node:18
 
+# Set environment variables
+ENV DO_BASEURL=https://DOSPACENAME.ams3.digitaloceanspaces.com
+ENV SMTP_ENABLE=true
+ENV DO_SECRET_ACCESS_KEY=
+ENV MONGODB_URI=mongodb://mongo-container:27017/OpenSignDB
+ENV SMTP_PASS=password
+ENV DO_REGION=us-west
+ENV DO_ENDPOINT=ams3.digitaloceanspaces.com
+ENV SERVER_URL=http://127.0.0.1:8080/app
+ENV MAILGUN_API_KEY=
+ENV DO_ACCESS_KEY_ID=
+ENV DO_SPACE=DOSPACENAME
+ENV PUBLIC_URL=https://localhost:3001
+ENV SMTP_USER_EMAIL=mailer@yourdomain.com
+ENV MAILGUN_SENDER=postmaster@mail.yourdomain.com
+ENV SMTP_HOST=smtp.yourhost.com
+ENV GENERATE_SOURCEMAP=false
+ENV PARSE_MOUNT=/app
+ENV MAILGUN_DOMAIN=mail.yourdomain.com
+ENV APP_ID=opensign
+ENV SMTP_PORT=443
+ENV REACT_APP_APPID=opensign
+ENV appName=open_sign_server
+ENV PASS_PHRASE=opensign
+ENV MASTER_KEY=XnAadwKxxByMr
+ENV USE_LOCAL=true
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+
+
 # Set the working directory inside the container
 WORKDIR /usr/src/app
 
