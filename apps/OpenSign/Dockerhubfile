@@ -5,7 +5,8 @@ FROM node:18
 ENV DO_BASEURL=https://DOSPACENAME.ams3.digitaloceanspaces.com
 ENV SMTP_ENABLE=true
 ENV DO_SECRET_ACCESS_KEY=
-ENV MONGODB_URI=mongodb://localhost:27017/OpenSignDB
+#ENV MONGODB_URI=mongodb://localhost:27018/OpenSignDB
+ENV MONGODB_URI=mongodb://mongo-container:27018/OpenSignDB   
 #ENV MONGODB_URI=mongodb://host.docker.internal:27017/OpenSignDB   
 ENV SMTP_PASS=password
 ENV DO_REGION=us-west
