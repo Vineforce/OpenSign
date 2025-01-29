@@ -8,7 +8,7 @@ jobs:
   publish_image:
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
+      - name: checkout Server API Code
         uses: actions/checkout@v3
       - name: build OpenSign Server
         run: |
@@ -17,7 +17,7 @@ jobs:
         run: |
           docker login -u ${{secrets.DOCKERHUB_USERNAME}} -p ${{secrets.DOCKERHUB_TOKEN}}
           docker push ${{secrets.DOCKERHUB_USERNAME}}/hello-docker-hub-imagename:latest
-                - name: checkout
+      - name: checkout Client Code
         uses: actions/checkout@v3
       - name: build OpenSign Client
         run: |
