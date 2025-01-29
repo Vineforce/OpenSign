@@ -1,6 +1,8 @@
 name: Publish Image to Docker Hub
 on:
-  [workflow_dispatch]
+  push:
+    branches:
+      - Whitelebel-ChangeIconText
 
 jobs:
   publish_image:
