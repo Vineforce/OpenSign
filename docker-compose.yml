@@ -1,6 +1,6 @@
 services:
   server:
-    image: amitkumarvineforce/opensignserver:latest
+    image: amitkumarvineforce/opensignserver:Whitelebel-ChangeIconText
     container_name: OpenSignServer-container
     volumes:
       - opensign-files:/usr/src/app/files
@@ -24,7 +24,7 @@ services:
     networks:
       - app-network
   client:
-    image: amitkumarvineforce/opensign:latest
+    image: amitkumarvineforce/opensign:Whitelebel-ChangeIconText
     container_name: OpenSign-container
     depends_on:
       - server
