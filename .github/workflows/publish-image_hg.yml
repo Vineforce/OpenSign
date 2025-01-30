@@ -10,9 +10,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - image: amitkumarvineforce/opensign
+          - image: amitkumarvineforce/opensign:latest
             dockerfile: apps/OpenSign/Dockerhubfile
-          - image: amitkumarvineforce/opensignserver
+          - image: amitkumarvineforce/opensignserver:latest
             dockerfile: apps/OpenSignServer/Dockerhubfile
     steps:
       -
