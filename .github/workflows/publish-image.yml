@@ -2,7 +2,7 @@ name: Publish Image to Docker Hub
 on:
   push:
     branches:
-      - Whitelebel-ChangeIconText
+      - Whitelebel-ChangeIconText1
 
 jobs:
   publish_image:
