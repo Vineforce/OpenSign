@@ -28,15 +28,17 @@ async function getTenantByUserId(userId, contactId) {
         className: '_User',
         objectId: userId,
       });
-      const extuser = await query.first({ useMasterKey: true });
+      const extuser = await query.first({ useMasterKey: true });     
       if (extuser) {
-        const user = extuser?.get('CreatedBy')?.id || userId;
+        //const user = extuser?.get('CreatedBy')?.id || userId;
+        const tenantId = extuser?.get('TenantId')?.id //
         const tenantCreditsQuery = new Parse.Query('partners_Tenant');
-        tenantCreditsQuery.equalTo('UserId', {
-          __type: 'Pointer',
-          className: '_User',
-          objectId: user,
-        });
+        tenantCreditsQuery.equalTo('objectId',tenantId);
+        // tenantCreditsQuery.equalTo('UserId', {
+        //   __type: 'Pointer',
+        //   className: '_User',
+        //   objectId: user,
+        // });
         tenantCreditsQuery.exclude('FileAdapters,PfxFile');
         const res = await tenantCreditsQuery.first({ useMasterKey: true });
         return res;
