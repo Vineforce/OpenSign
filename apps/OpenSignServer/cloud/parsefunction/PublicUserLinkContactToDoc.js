@@ -149,7 +149,7 @@ const sendMailToAllSigners = async docId => {
                 month: 'long',
                 year: 'numeric',
               });
-              const imgPng = 'https://qikinnovation.ams3.digitaloceanspaces.com/logo.png';
+              const imgPng = 'https://www.excis.com/assets/images/main-logo.png';
               const objectId = signerMail[i].objectId;
               const hostPublicUrl = 'https://app.opensignlabs.com';
 
@@ -209,9 +209,9 @@ const sendMailToAllSigners = async docId => {
                     localExpireDate +
                     "</td></tr><tr> <td></td> <td> </td></tr></table> </div> <div style='margin-left:70px'><a href=" +
                     signPdf +
-                    "> <button style='padding: 12px 12px 12px 12px;background-color: #d46b0f;color: white;  border: 0px;box-shadow: rgba(0, 0, 0, 0.05) 0px 6px 24px 0px,rgba(0, 0, 0, 0.08) 0px 0px 0px 1px;font-weight:bold;margin-top:30px'>Sign here</button></a> </div> <div style='display: flex; justify-content: center;margin-top: 10px;'> </div></div></div><div><p> This is an automated email from OpenSign™. For any queries regarding this email, please contact the sender " +
+                    "> <button style='padding: 12px 12px 12px 12px;background-color: #d46b0f;color: white;  border: 0px;box-shadow: rgba(0, 0, 0, 0.05) 0px 6px 24px 0px,rgba(0, 0, 0, 0.08) 0px 0px 0px 1px;font-weight:bold;margin-top:30px'>Sign here</button></a> </div> <div style='display: flex; justify-content: center;margin-top: 10px;'> </div></div></div><div><p> This is an automated email from Excis™. For any queries regarding this email, please contact the sender " +
                     senderEmail +
-                    ' directly.If you think this email is inappropriate or spam, you may file a complaint with OpenSign™   <a href= ' +
+                    ' directly.If you think this email is inappropriate or spam, you may file a complaint with Excis™   <a href= ' +
                     openSignUrl +
                     ' target=_blank>here</a>.</p> </div></div></body> </html>',
               };
