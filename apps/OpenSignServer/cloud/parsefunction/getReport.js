@@ -63,9 +63,9 @@ export default async function getReport(request) {
           'X-Parse-Master-Key': masterKey,
         };
         const url = `${serverUrl}/classes/${clsName}?where=${strParams}&keys=${strKeys}&order=${orderBy}&skip=${skip}&limit=${limit}&include=AuditTrail.UserPtr,Placeholders.signerPtr,ExtUserPtr.TenantId`;
-        const res = await axios.get(url, { headers: headers });            
+        const res = await axios.get(url, { headers: headers });      
         if (res.data && res.data.results) {
-           // Check for Need your Sign only so that sequence can be maintained   
+           // Check for 'Need your Sign' Report only so that user will sign the documnet in the sequence they are added
           // 4Hhwbp482K is for Need your Signature banner count display and drill down
           // 5Go51Q7T8r is for Recent signature request grid/lsitview/table
           if (reportId === '4Hhwbp482K' || reportId === '5Go51Q7T8r') {
@@ -74,7 +74,6 @@ export default async function getReport(request) {
               const signerIndex = doc.Signers.findIndex(signer => signer.UserId.objectId === userId)
               // if index is zero then add in the doc array 
               if (signerIndex == 0) {
-                console.log('push doc===>')
                 myDoc.push(doc);
               }
               else {
