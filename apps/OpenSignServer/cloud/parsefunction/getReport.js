@@ -63,9 +63,33 @@ export default async function getReport(request) {
           'X-Parse-Master-Key': masterKey,
         };
         const url = `${serverUrl}/classes/${clsName}?where=${strParams}&keys=${strKeys}&order=${orderBy}&skip=${skip}&limit=${limit}&include=AuditTrail.UserPtr,Placeholders.signerPtr,ExtUserPtr.TenantId`;
-        const res = await axios.get(url, { headers: headers });
+        const res = await axios.get(url, { headers: headers });      
         if (res.data && res.data.results) {
-          return res.data.results;
+           // Check for 'Need your Sign' Report only so that user will sign the documnet in the sequence they are added
+          // 4Hhwbp482K is for Need your Signature banner count display and drill down
+          // 5Go51Q7T8r is for Recent signature request grid/lsitview/table
+          if (reportId === '4Hhwbp482K' || reportId === '5Go51Q7T8r') {
+              let myDoc = [];
+              res.data.results.forEach((doc, indexDoc) => {
+              const signerIndex = doc.Signers.findIndex(signer => signer.UserId.objectId === userId)
+              // if index is zero then add in the doc array 
+              if (signerIndex == 0) {
+                myDoc.push(doc);
+              }
+              else {
+                // if index is greater than zero then check if the previous signer has signed or not 
+                let previousSignersSigned = doc.AuditTrail[signerIndex - 1]?.Activity === 'Signed';
+                if (previousSignersSigned) {
+                  // add document to user collection as previous has signed
+                  myDoc.push(doc);
+                }
+              }
+            });
+            return myDoc;
+          }
+          else {
+            return res.data.results;
+          }
         } else {
           return [];
         }
