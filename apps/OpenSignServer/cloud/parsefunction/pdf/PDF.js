@@ -101,7 +101,7 @@ async function sendCompletedMail(obj) {
   const doc = obj.doc;
   const sender = obj.doc.ExtUserPtr;
   const pdfName = doc.Name;
-  const mailLogo = 'https://qikinnovation.ams3.digitaloceanspaces.com/logo.png';
+  const mailLogo = 'https://www.excis.com/assets/images/main-logo.png';
   let signersMail;
   if (doc?.Signers?.length > 0) {
     const isOwnerExistsinSigners = doc?.Signers?.find(x => x.Email === sender.Email);
@@ -118,9 +118,9 @@ async function sendCompletedMail(obj) {
     mailLogo +
     "  height='50' style='padding:20px'/> </div><div style='padding:2px;font-family:system-ui; background-color: #47a3ad;'>    <p style='font-size:20px;font-weight:400;color:white;padding-left:20px',> Document signed successfully</p></div><div><p style='padding:20px;font-family:system-ui;font-size:14px'>All parties have successfully signed the document " +
     `<b>"${pdfName}"</b>` +
-    '. Kindly download the document from the attachment.</p></div> </div><div><p>This is an automated email from OpenSign™. For any queries regarding this email, please contact the sender ' +
+    '. Kindly download the document from the attachment.</p></div> </div><div><p>This is an automated email from Excis™. For any queries regarding this email, please contact the sender ' +
     sender.Email +
-    ' directly. If you think this email is inappropriate or spam, you may file a complaint with OpenSign™ <a href=www.opensignlabs.com target=_blank>here</a>.</p></div></div></body></html>';
+    ' directly. If you think this email is inappropriate or spam, you may file a complaint with Excis™ <a href=www.opensignlabs.com target=_blank>here</a>.</p></div></div></body></html>';
 
   if (obj?.isCustomMail) {
     try {
@@ -169,7 +169,7 @@ async function sendCompletedMail(obj) {
   const params = {
     extUserId: sender.objectId,
     url: url,
-    from: 'OpenSign™',
+    from: 'Excis™',
     recipient: recipient,
     subject: subject,
     pdfName: pdfName,
