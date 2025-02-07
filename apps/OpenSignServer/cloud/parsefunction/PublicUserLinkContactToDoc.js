@@ -156,7 +156,7 @@ const sendMailToAllSigners = async docId => {
               //encode this url value `${Doc.objectId}/${signerMail[i].Email}/${objectId}` to base64 using `btoa` function
               const encodeBase64 = btoa(`${Doc?.objectId}/${signerMail[i].Email}/${objectId}`);
               let signPdf = `${hostPublicUrl}/login/${encodeBase64}`;
-              const openSignUrl = 'https://www.opensignlabs.com/';
+              const openSignUrl = 'https://www.excis.com';
               const orgName = Doc?.ExtUserPtr?.Company || '';
               const themeBGcolor = '#47a3ad';
               const senderName = `${Doc?.ExtUserPtr.Name}`;

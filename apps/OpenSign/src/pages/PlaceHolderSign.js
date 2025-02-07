@@ -1112,7 +1112,7 @@ function PlaceHolderSign() {
     for (let i = 0; i < signerMail.length; i++) {
       try {
         const imgPng =
-          "https://qikinnovation.ams3.digitaloceanspaces.com/logo.png";
+          "https://www.excis.com/assets/images/main-logo.png";
         let url = `${localStorage.getItem("baseUrl")}functions/sendmailv3`;
         const headers = {
           "Content-Type": "application/json",
@@ -1126,7 +1126,7 @@ function PlaceHolderSign() {
           `${pdfDetails?.[0].objectId}/${signerMail[i].Email}/${objectId}`
         );
         let signPdf = `${hostUrl}/login/${encodeBase64}`;
-        const openSignUrl = "https://www.opensignlabs.com/";
+        const openSignUrl = "https://www.excis.com";
         const orgName = pdfDetails[0]?.ExtUserPtr.Company
           ? pdfDetails[0].ExtUserPtr.Company
           : "";

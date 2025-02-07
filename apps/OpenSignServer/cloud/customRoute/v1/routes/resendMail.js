@@ -59,7 +59,8 @@ export default async function resendMail(request, response) {
             //encode this url value `${response.id}/${receiverMail}/${objectId}` to base64 using `btoa` function
             const encodeBase64 = btoa(`${_resDoc.objectId}/${receiverMail}/${objectId}`);
             let signPdf = `${hostUrl}/login/${encodeBase64}`;
-            const openSignUrl = 'https://www.opensignlabs.com/contact-us';
+            //TODO: Put Contact us link here
+            const openSignUrl = "https://www.excis.com";
             const orgName = _resDoc.ExtUserPtr.Company ? _resDoc.ExtUserPtr.Company : '';
             const newDate = new Date(_resDoc.ExpiryDate.iso);
             newDate.setDate(newDate.getDate() + 15);

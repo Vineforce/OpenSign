@@ -54,7 +54,7 @@ function EmailComponent({
     for (let i = 0; i < emailList.length; i++) {
       try {
         const imgPng =
-          "https://qikinnovation.ams3.digitaloceanspaces.com/logo.png";
+          "https://www.excis.com/assets/images/main-logo.png";
 
         let url = `${localStorage.getItem("baseUrl")}functions/sendmailv3`;
         const headers = {
@@ -62,7 +62,8 @@ function EmailComponent({
           "X-Parse-Application-Id": localStorage.getItem("parseAppId"),
           sessionToken: localStorage.getItem("accesstoken")
         };
-        const openSignUrl = "https://www.opensignlabs.com/contact-us";
+        //TODO: Put Contact us link here
+        const openSignUrl = "https://www.excis.com";
         const themeBGcolor = themeColor;
         let params = {
           mailProvider: activeMailAdapter,
