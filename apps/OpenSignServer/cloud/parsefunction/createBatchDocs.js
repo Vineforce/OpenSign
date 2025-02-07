@@ -71,7 +71,7 @@ async function sendMail(document) {
         encodeBase64 = btoa(`${document.objectId}/${signerMail[i].email}`);
       }
       let signPdf = `${hostUrl}/login/${encodeBase64}`;
-      const openSignUrl = 'https://www.opensignlabs.com/';
+      const openSignUrl = 'https://www.excis.com';
       const orgName = document.ExtUserPtr.Company ? document.ExtUserPtr.Company : '';
       const themeBGcolor = '#47a3ad';
       let params = {

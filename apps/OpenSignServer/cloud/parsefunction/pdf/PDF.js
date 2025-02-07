@@ -120,7 +120,7 @@ async function sendCompletedMail(obj) {
     `<b>"${pdfName}"</b>` +
     '. Kindly download the document from the attachment.</p></div> </div><div><p>This is an automated email from Excis™. For any queries regarding this email, please contact the sender ' +
     sender.Email +
-    ' directly. If you think this email is inappropriate or spam, you may file a complaint with Excis™ <a href=www.opensignlabs.com target=_blank>here</a>.</p></div></div></body></html>';
+    ' directly. If you think this email is inappropriate or spam, you may file a complaint with Excis™ <a href="https://www.excis.com" target=_blank>here</a>.</p></div></div></body></html>';
 
   if (obj?.isCustomMail) {
     try {

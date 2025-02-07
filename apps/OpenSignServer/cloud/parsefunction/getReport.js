@@ -78,9 +78,13 @@ export default async function getReport(request) {
               }
               else {
                 // if index is greater than zero then check if the previous signer has signed or not 
-                let previousSignersSigned = doc.AuditTrail[signerIndex - 1]?.Activity === 'Signed';
+                // get userid of previous signer
+                let previousSigner = doc.Signers[signerIndex - 1].UserId.objectId;
+                // find the userid ini Audit trail
+                let auditTrailIndex = Array.isArray(doc.AuditTrail) ? doc.AuditTrail.findIndex(auditTrailItem => auditTrailItem.UserPtr?.UserId?.objectId === previousSigner) : -1;                
+                let previousSignersSigned = auditTrailIndex !== -1 && doc.AuditTrail?.[auditTrailIndex]?.Activity === 'Signed';
                 if (previousSignersSigned) {
-                  // add document to user collection as previous has signed
+                  // add document to user collection as previous signer has signed
                   myDoc.push(doc);
                 }
               }

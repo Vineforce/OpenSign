@@ -1016,7 +1016,7 @@ function PdfRequestFiles(props) {
 
                       try {
                         const imgPng =
-                          "https://qikinnovation.ams3.digitaloceanspaces.com/logo.png";
+                          "https://www.excis.com/assets/images/main-logo.png";
                         let url = `${localStorage.getItem(
                           "baseUrl"
                         )}functions/sendmailv3`;
@@ -1045,8 +1045,10 @@ function PdfRequestFiles(props) {
                         let signPdf = props?.templateId
                           ? `${hostPublicUrl}/login/${encodeBase64}`
                           : `${hostUrl}/login/${encodeBase64}`;
+
+                        //TODO: Put Contact us link here
                         const openSignUrl =
-                          "https://www.opensignlabs.com/contact-us";
+                          "https://www.excis.com";
                         const orgName = pdfDetails[0]?.ExtUserPtr.Company
                           ? pdfDetails[0].ExtUserPtr.Company
                           : "";

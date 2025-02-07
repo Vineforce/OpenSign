@@ -257,7 +257,8 @@ export default async function createDocumentWithTemplate(request, response) {
                       //encode this url value `${res.id}/${contactMail[i].email}/${objectId}` to base64 using `btoa` function
                       const encodeBase64 = btoa(`${res.id}/${contactMail[i].email}/${objectId}`);
                       let signPdf = `${hostUrl}/login/${encodeBase64}`;
-                      const openSignUrl = 'https://www.opensignlabs.com/contact-us';
+                      //TODO: Put Contact us link here
+                      const openSignUrl = "https://www.excis.com";
                       const orgName = template.ExtUserPtr.Company
                         ? template.ExtUserPtr.Company
                         : '';
