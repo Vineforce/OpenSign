@@ -3,9 +3,11 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { tomorrow } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { copytoData } from "../../constant/Utils";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router";
 
 function EmbedTab(props) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const tabName = [
     { title: "React/Next.js", icon: "fa-brands fa-react", color: "#61dafb" },
     { title: "JavaScript", icon: "fa-brands fa-js", color: "#ffd43b" },
@@ -18,28 +20,26 @@ function EmbedTab(props) {
     {
       id: 0,
       title: "Installation",
-      codeString: `
-npm install @opensign/react`
+      codeString: `npm install @opensign/react`
     },
     {
       id: 1,
       title: "Usage",
       codeString: `
-import React from "react";
+import React from "react"; 
 import Opensign from "@opensign/react";
 
-export function App() {
+export default function App() {
   return (
     <div className="app">
       <Opensign
         onLoad={() => console.log("success")}
         onLoadError={(error) => console.log(error)}
-        templateId= "${props.templateId}"
+        templateId= "${props.templateId ? props.templateId : "#templateId"}"
       />
     </div>
   );
 }
-
 
 `
     }
@@ -49,44 +49,41 @@ export function App() {
     {
       id: 0,
       title: "Installation",
-      codeString: `
-npm install @opensign/angular`
+      codeString: `npm install @opensign/angular`
     },
     {
       id: 1,
       title: "Usage",
       codeString: `
 import { Component } from '@angular/core';
-import {OpensignComponent} from "@opensign/angular"
+import { OpensignComponent } from "@opensign/angular"
  
 @Component({
   selector:'app-root',
   standalone: true,
   imports: [OpensignComponent], 
-  template:\`<opensign templateId="${props.templateId}"
+  template:\`<opensign templateId="${props.templateId ? props.templateId : "#templateId"}"
             (onLoad)="handleLoad()"
             (onLoadError)="handleError($event)"
              ></opensign>\`,
 })
-export class AppComponent{
+export class AppComponent {
   handleLoad() {
     console.log("success");
   }
   handleError(error: string) {
     console.log(error);
   }
-
 }
-
 
 `
     }
   ];
   const jsCodeString = `
 <script
-  src= "https://app.opensignlabs.com/static/js/public-template.bundle.js"
+  src= "${window.location.origin}/static/js/public-template.bundle.js"
   id="opensign-script"
-  templateId=${props.templateId}
+  templateId=${props.templateId ? props.templateId : "#templateId"}
   ></script>
   `;
 
@@ -97,7 +94,12 @@ export class AppComponent{
   };
 
   return (
-    <div className="mt-4 border-t-[1px]">
+    <div className={`${props.templateId && "border-t-[1px] mt-4"}`}>
+      {props.templateId && (
+        <h3 className="text-base-content font-bold text-lg pt-[15px] pb-[5px]">
+          {t("embed-template")}
+        </h3>
+      )}
       <div className="flex justify-center items-center mt-2">
         <div role="tablist" className="op-tabs op-tabs-bordered">
           {tabName.map((tabData, ind) => (
@@ -107,7 +109,7 @@ export class AppComponent{
               role="tab"
               className={`${
                 activeTab === ind ? "op-tab-active" : ""
-              } op-tab flex items-center`}
+              } op-tab flex items-center pb-10 md:pb-0`}
             >
               <i
                 className={`${tabData.icon}`}
@@ -130,7 +132,7 @@ export class AppComponent{
                     {t(`${data.title}`)}
                   </p>
                   {ind === 0 && (
-                    <p className="text-[13px] mt-2">
+                    <p className="text-[15px] mt-2">
                       {t("public-template-mssg-1")}
                     </p>
                   )}
@@ -157,8 +159,19 @@ export class AppComponent{
                 </div>
               );
             })}
-
-            <p className="font-medium text-[15px]">
+            {props.isEmbedPage && (
+              <p className="text-[15px] my-2">
+                {t("js-snippet-msg-1")}
+                <span
+                  className="text-blue-600 cursor-pointer px-1"
+                  onClick={() => navigate("/report/6TeaPr321t")}
+                >
+                  {t("js-snippet-msg-2")}
+                </span>
+                <span>{t("js-snippet-msg-3")}</span>
+              </p>
+            )}
+            <p className="font-medium mt-3 text-[15px]">
               {t("public-template-mssg-3")}
             </p>
             <p className="my-[6px]">
@@ -179,8 +192,8 @@ export class AppComponent{
         ) : activeTab === 1 ? (
           <div className="mt-4">
             <div>
-              {/* <p className="font-medium text-[18px]">{t(`${data.title}`)}</p> */}
-
+              <p className="font-medium text-[18px]">{t(`Usage`)}</p>
+              <p className="text-[15px] my-2">{t("js-snippet-msg")}</p>
               <div className="relative p-1">
                 <div
                   onClick={() => handleCopy(jsCodeString, 0)}
@@ -201,6 +214,18 @@ export class AppComponent{
                   {jsCodeString}
                 </SyntaxHighlighter>
               </div>
+              {props.isEmbedPage && (
+                <p className="text-[15px] my-2">
+                  {t("js-snippet-msg-1")}
+                  <span
+                    className="text-blue-600 cursor-pointer px-1"
+                    onClick={() => navigate("/report/6TeaPr321t")}
+                  >
+                    {t("js-snippet-msg-2")}
+                  </span>
+                  <span>{t("js-snippet-msg-3")}</span>
+                </p>
+              )}
             </div>
           </div>
         ) : (
@@ -213,7 +238,7 @@ export class AppComponent{
                       {t(`${data.title}`)}
                     </p>
                     {ind === 0 && (
-                      <p className="text-[13px] mt-2">
+                      <p className="text-[15px] mt-2">
                         {t("angular-npm-mssg-1")}
                       </p>
                     )}
@@ -240,8 +265,19 @@ export class AppComponent{
                   </div>
                 );
               })}
-
-              <p className="font-medium text-[15px]">
+              {props.isEmbedPage && (
+                <p className="text-[15px] my-2">
+                  {t("js-snippet-msg-1")}
+                  <span
+                    className="text-blue-600 cursor-pointer px-1"
+                    onClick={() => navigate("/report/6TeaPr321t")}
+                  >
+                    {t("js-snippet-msg-2")}
+                  </span>
+                  <span>{t("js-snippet-msg-3")}</span>
+                </p>
+              )}
+              <p className="font-medium mt-3 text-[15px]">
                 {t("public-template-mssg-3")}
               </p>
               <p className="my-[6px]">

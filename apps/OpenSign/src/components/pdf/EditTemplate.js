@@ -1,11 +1,17 @@
-import React, { useState, useEffect } from "react";
-import { checkIsSubscribed, getFileName } from "../../constant/Utils";
-import Upgrade from "../../primitives/Upgrade";
-import { isEnableSubscription } from "../../constant/const";
+import React, {
+  useState,
+} from "react";
+import {
+  getFileName
+} from "../../constant/Utils";
 import { useTranslation } from "react-i18next";
 import { Tooltip } from "react-tooltip";
+import SignersInput from "../shared/fields/SignersInput";
 
-const EditTemplate = ({ template, onSuccess, jwttoken }) => {
+const EditTemplate = ({
+  template,
+  onSuccess,
+}) => {
   const { t } = useTranslation();
   const [formData, setFormData] = useState({
     Name: template?.Name || "",
@@ -17,19 +23,26 @@ const EditTemplate = ({ template, onSuccess, jwttoken }) => {
     IsEnableOTP: template?.IsEnableOTP ? `${template?.IsEnableOTP}` : "false",
     IsTourEnabled: template?.IsTourEnabled
       ? `${template?.IsTourEnabled}`
-      : "false"
+      : "false",
+    NotifyOnSignatures:
+      template?.NotifyOnSignatures !== undefined
+        ? template?.NotifyOnSignatures
+        : false,
+    Bcc: template?.Bcc,
+    RedirectUrl: template?.RedirectUrl || "",
+    AllowModifications: template?.AllowModifications || false
   });
-  const [isSubscribe, setIsSubscribe] = useState(false);
-  useEffect(() => {
-    fetchSubscription();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const fetchSubscription = async () => {
-    if (isEnableSubscription) {
-      const subscribe = await checkIsSubscribed(jwttoken);
-      setIsSubscribe(subscribe.isValid);
+
+  // `isValidURL` is used to check valid webhook url
+  function isValidURL(value) {
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" || url.protocol === "http:";
+    } catch (error) {
+      return false;
     }
-  };
+  }
+
   const handleStrInput = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -38,10 +51,15 @@ const EditTemplate = ({ template, onSuccess, jwttoken }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (formData.RedirectUrl && !isValidURL(formData?.RedirectUrl)) {
+      alert(t("invalid-redirect-url"));
+      return;
+    }
     const isChecked = formData.SendinOrder === "true" ? true : false;
     const isTourEnabled = formData?.IsTourEnabled === "false" ? false : true;
     const AutoReminder = formData?.AutomaticReminders || false;
     const IsEnableOTP = formData.IsEnableOTP === "true" ? true : false;
+    const allowModify = formData?.AllowModifications || false;
     let reminderDate = {};
     if (AutoReminder) {
       const RemindOnceInEvery = parseInt(formData?.RemindOnceInEvery);
@@ -54,15 +72,25 @@ const EditTemplate = ({ template, onSuccess, jwttoken }) => {
       SendinOrder: isChecked,
       IsEnableOTP: IsEnableOTP,
       IsTourEnabled: isTourEnabled,
+      AllowModifications: allowModify,
       ...reminderDate
     };
     onSuccess(data);
   };
-  const handleAutoReminder = () => {
-    setFormData((prev) => ({
-      ...prev,
-      AutomaticReminders: !formData.AutomaticReminders
-    }));
+
+  // `handleNotifySignChange` is trigger when user change radio of notify on signatures
+  const handleNotifySignChange = (value) => {
+    setFormData((obj) => ({ ...obj, NotifyOnSignatures: value }));
+  };
+  const handleBcc = (data) => {
+    if (data && data.length > 0) {
+      const trimEmail = data.map((item) => ({
+        objectId: item?.value,
+        Name: item?.label,
+        Email: item?.email
+      }));
+      setFormData((prev) => ({ ...prev, Bcc: trimEmail }));
+    }
   };
   return (
     <div className="max-h-[300px] md:max-h-[400px] overflow-y-scroll p-[10px]">
@@ -120,141 +148,32 @@ const EditTemplate = ({ template, onSuccess, jwttoken }) => {
           </div>
           <div className="mb-[0.35rem]">
             <label className="text-[13px]">{t("send-in-order")}</label>
-            <div className="flex items-center gap-[8px] ml-[8px] mb-[5px]">
-              <input
-                type="radio"
-                value={"true"}
-                className="op-radio op-radio-xs"
-                name="SendinOrder"
-                checked={formData.SendinOrder === "true"}
-                onChange={handleStrInput}
-              />
-              <div className="text-[12px]">{t("yes")}</div>
-            </div>
-            <div className="flex items-center gap-[8px] ml-[8px] mb-[5px]">
-              <input
-                type="radio"
-                value={"false"}
-                name="SendinOrder"
-                className="op-radio op-radio-xs"
-                checked={formData.SendinOrder === "false"}
-                onChange={handleStrInput}
-              />
-              <div className="text-[12px]">{t("no")}</div>
-            </div>
-          </div>
-          {isEnableSubscription && (
-            <div className="text-xs mt-2">
-              <span
-                className={
-                  isSubscribe ? "font-semibold" : "font-semibold text-gray-300"
-                }
-              >
-                {t("auto-reminder")}
-                {!isSubscribe && isEnableSubscription && <Upgrade />}
-              </span>
-              <label
-                className={`${
-                  isSubscribe
-                    ? "cursor-pointer "
-                    : "pointer-events-none opacity-50"
-                } relative block items-center mb-0`}
-              >
-                <input
-                  checked={formData.AutomaticReminders}
-                  onChange={handleAutoReminder}
-                  type="checkbox"
-                  className="op-toggle transition-all checked:[--tglbg:#3368ff] checked:bg-white mt-2"
-                />
-              </label>
-            </div>
-          )}
-          {isSubscribe && formData?.AutomaticReminders === true && (
-            <div className="text-xs mt-2">
-              <label className="block">
-                {t("remind-once")}
-                <span className="text-red-500 text-[13px]">*</span>
-              </label>
-              <input
-                type="number"
-                value={formData.RemindOnceInEvery}
-                name="RemindOnceInEvery"
-                className="op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content w-full text-xs"
-                onChange={handleStrInput}
-                onInvalid={(e) =>
-                  e.target.setCustomValidity(t("input-required"))
-                }
-                onInput={(e) => e.target.setCustomValidity("")}
-                required
-              />
-            </div>
-          )}
-          {isEnableSubscription && (
-            <div className="text-xs mt-2">
-              <label className="block">
-                <span className={isSubscribe ? "" : " text-gray-300"}>
-                  {t("isenable-otp")}{" "}
-                  <a data-tooltip-id="isenableotp-tooltip" className="ml-1">
-                    <sup>
-                      <i className="fa-light fa-question rounded-full border-[#33bbff] text-[#33bbff] text-[13px] border-[1px] py-[1.5px] px-[4px]"></i>
-                    </sup>
-                  </a>{" "}
-                  {!isSubscribe && isEnableSubscription && <Upgrade />}
-                </span>
-                <Tooltip id="isenableotp-tooltip" className="z-50">
-                  <div className="max-w-[200px] md:max-w-[450px]">
-                    <p className="font-bold">{t("isenable-otp")}</p>
-                    <p>{t("isenable-otp-help.p1")}</p>
-                    <p className="p-[5px]">
-                      <ol className="list-disc">
-                        <li>
-                          <span className="font-bold">{t("yes")}: </span>
-                          <span>{t("isenable-otp-help.p2")}</span>
-                        </li>
-                        <li>
-                          <span className="font-bold">{t("no")}: </span>
-                          <span>{t("isenable-otp-help.p3")}</span>
-                        </li>
-                      </ol>
-                    </p>
-                    <p>{t("isenable-otp-help.p4")}</p>
-                  </div>
-                </Tooltip>
-              </label>
-              <div
-                className={`${
-                  isSubscribe ? "" : "pointer-events-none opacity-50"
-                } flex items-center gap-2 ml-2 mb-1 `}
-              >
+            <div className="flex flex-col md:flex-row md:gap-4">
+              <div className="flex items-center gap-[8px] ml-[8px] mb-[5px]">
                 <input
                   type="radio"
                   value={"true"}
                   className="op-radio op-radio-xs"
-                  name="IsEnableOTP"
-                  checked={formData.IsEnableOTP === "true"}
+                  name="SendinOrder"
+                  checked={formData.SendinOrder === "true"}
                   onChange={handleStrInput}
                 />
-                <div className="text-center">{t("yes")}</div>
+                <div className="text-[12px]">{t("yes")}</div>
               </div>
-              <div
-                className={`${
-                  isSubscribe ? "" : "pointer-events-none opacity-50"
-                } flex items-center gap-2 ml-2 mb-1 `}
-              >
+              <div className="flex items-center gap-[8px] ml-[8px] mb-[5px]">
                 <input
                   type="radio"
                   value={"false"}
-                  name="IsEnableOTP"
+                  name="SendinOrder"
                   className="op-radio op-radio-xs"
-                  checked={formData.IsEnableOTP === "false"}
+                  checked={formData.SendinOrder === "false"}
                   onChange={handleStrInput}
                 />
-                <div className="text-center">{t("no")}</div>
+                <div className="text-[12px]">{t("no")}</div>
               </div>
             </div>
-          )}
-
-          <div className="text-xs mt-2">
+          </div>
+          <div className="text-xs mt-3">
             <label className="block">
               <span>
                 {t("enable-tour")}
@@ -283,28 +202,97 @@ const EditTemplate = ({ template, onSuccess, jwttoken }) => {
                 </div>
               </Tooltip>
             </label>
-            <div className={`  flex items-center gap-2 ml-2 mb-1 `}>
-              <input
-                type="radio"
-                value={"true"}
-                className="op-radio op-radio-xs"
-                name="IsTourEnabled"
-                checked={formData.IsTourEnabled === "true"}
-                onChange={handleStrInput}
-              />
-              <div className="text-center">{t("yes")}</div>
+            <div className="flex flex-col md:flex-row md:gap-4">
+              <div className="flex items-center gap-2 ml-2 mb-1">
+                <input
+                  type="radio"
+                  value={"true"}
+                  className="op-radio op-radio-xs"
+                  name="IsTourEnabled"
+                  checked={formData.IsTourEnabled === "true"}
+                  onChange={handleStrInput}
+                />
+                <div className="text-center">{t("yes")}</div>
+              </div>
+              <div className="flex items-center gap-2 ml-2 mb-1">
+                <input
+                  type="radio"
+                  value={"false"}
+                  name="IsTourEnabled"
+                  className="op-radio op-radio-xs"
+                  checked={formData.IsTourEnabled === "false"}
+                  onChange={handleStrInput}
+                />
+                <div className="text-center">{t("no")}</div>
+              </div>
             </div>
-            <div className={` flex items-center gap-2 ml-2 mb-1 `}>
-              <input
-                type="radio"
-                value={"false"}
-                name="IsTourEnabled"
-                className="op-radio op-radio-xs"
-                checked={formData.IsTourEnabled === "false"}
-                onChange={handleStrInput}
-              />
-              <div className="text-center">{t("no")}</div>
+          </div>
+          <div className="text-xs mt-3">
+            <label
+            >
+              {t("notify-on-signatures")}
+              <a data-tooltip-id="nos-tooltip" className="ml-1">
+                <sup>
+                  <i className="fa-light fa-question rounded-full border-[#33bbff] text-[#33bbff] text-[13px] border-[1px] py-[1.5px] px-[4px]"></i>
+                </sup>
+              </a>
+              <Tooltip id="nos-tooltip" className="z-[999]">
+                <div className="max-w-[200px] md:max-w-[450px] text-[11px]">
+                  <p className="font-bold">{t("notify-on-signatures")}</p>
+                  <p>{t("notify-on-signatures-help.p1")}</p>
+                  <p>{t("notify-on-signatures-help.note")}</p>
+                </div>
+              </Tooltip>
+            </label>
+            <div className="flex flex-col md:flex-row md:gap-4">
+              <div
+                className={
+                  "flex items-center gap-2 ml-2 mb-1"
+                }
+              >
+                <input
+                  className="mr-[2px] op-radio op-radio-xs"
+                  type="radio"
+                  onChange={() => handleNotifySignChange(true)}
+                  checked={formData.NotifyOnSignatures === true}
+                />
+                <div className="text-center">{t("yes")}</div>
+              </div>
+              <div
+                className={
+                  "flex items-center gap-2 ml-2 mb-1"
+                }
+              >
+                <input
+                  className="mr-[2px] op-radio op-radio-xs"
+                  type="radio"
+                  onChange={() => handleNotifySignChange(false)}
+                  checked={formData.NotifyOnSignatures === false}
+                />
+                <div className="text-center">{t("no")}</div>
+              </div>
             </div>
+          </div>
+          <div className="text-xs mt-3">
+            <SignersInput
+              label={t("Bcc")}
+              initialData={template?.Bcc}
+              onChange={handleBcc}
+              helptextZindex={50}
+              helpText={t("bcc-help")}
+              isCaptureAllData
+            />
+          </div>
+          <div className="text-xs mt-2">
+            <label className="block">Redirect Url</label>
+            <input
+              name="RedirectUrl"
+              className="op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content w-full text-xs"
+              value={formData.RedirectUrl}
+              onChange={handleStrInput}
+              onInvalid={(e) => e.target.setCustomValidity(t("input-required"))}
+              onInput={(e) => e.target.setCustomValidity("")}
+            />
           </div>
           <div className="mt-[1rem] flex justify-start">
             <button type="submit" className="op-btn op-btn-primary">
