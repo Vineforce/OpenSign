@@ -2,7 +2,7 @@ name: Publish-Image
 on:
   push:
     branches:
-      - 'vf-docker-latest-merge'
+      - 'vf-main-latest-merge'
 
 jobs:
   docker:
