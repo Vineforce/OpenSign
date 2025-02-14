@@ -569,7 +569,8 @@
     "github": "Github",
     "linked-in": "LinkedIn",
     "twitter": "Twitter",
-    "discord": "Discorde"
+    "web": "Web",
+    "mail": "Mail"
   },
   "tour-mssg": {
     "home-layout-1": "Vous vous êtes connecté avec succès ! Jetons un coup d'oeil.",

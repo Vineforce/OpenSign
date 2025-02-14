@@ -514,7 +514,7 @@ function Opensigndrive() {
   }
   return (
     <div className="bg-base-100 text-base-content rounded-box w-full shadow-md">
-      <Title title={"Excis™ Drive"} drive={true} />
+      <Title title={"Excis Drive"} drive={true} />
       <ModalUi
         isOpen={isAlert.isShow}
         title={t("alert")}

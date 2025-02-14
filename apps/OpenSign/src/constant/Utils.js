@@ -1008,7 +1008,7 @@ export const embedDocId = async (pdfDoc, documentId, allPages) => {
   const font = await pdfDoc.embedFont(fontBytes, { subset: true });
   for (let i = 0; i < allPages; i++) {
     const fontSize = 10;
-    const textContent = documentId && `OpenSign™ DocumentId: ${documentId} `;
+    const textContent = documentId && `Excis DocumentId: ${documentId} `;
     const pages = pdfDoc.getPages();
     const page = pages[i];
     try {
