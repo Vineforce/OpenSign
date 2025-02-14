@@ -79,7 +79,7 @@
       "Manage templates": "Manage templates",
       "Embedding": "Embedding"
     },
-    "OpenSign™ Drive": "Excis™ Drive",
+    "OpenSign™ Drive": "Excis Drive",
     "Reports": "Reports",
     "Documents": "Documents",
     "Documents-Children": {
@@ -198,7 +198,7 @@
   "remind-once": " Remind once in every (Days)",
   "next": "Next",
   "select-folder": "Select folder",
-  "OpenSign-drive": "Excis™ Drive",
+  "OpenSign-drive": "Excis Drive",
   "drive-document-status": {
     "Completed": "Completed",
     "Declined": "Declined",
@@ -570,12 +570,13 @@
     "github": "Github",
     "linked-in": "LinkedIn",
     "twitter": "Twitter",
-    "discord": "Discord"
+    "web": "Web",
+    "mail": "Mail"
   },
   "tour-mssg": {
     "home-layout-1": "You have logged in successfully! Let's take a look.",
     "home-layout-2": "To upload documents for self-signing or to request others’ signatures, simply select the respective buttons.",
-    "home-layout-3": "You are ready to start using OpenSign! If you need support feel free to contact us.",
+    "home-layout-3": "You are ready to start using Excis! If you need support feel free to contact us.",
     "generate-token": "Upgrade now to generate production API token.",
     "opensign-drive-1": "Click on the breadcrumb links to easily navigate through the folder hierarchy and view the documents within each folder.",
     "opensign-drive-2": "Click the add button to create a new folder or document.",

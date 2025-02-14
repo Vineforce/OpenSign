@@ -39,10 +39,10 @@ const Footer = () => {
     };
   }, []);
 
-  const appName = "OpenSign™";
+  const appName = "Excis";
   const openUrl = () => {
     openInNewTab(
-      "https://github.com/OpenSignLabs/OpenSign/releases/tag/" + version
+      "https://github.com/Vineforce/OpenSign/releases/tag/" + version
     );
   };
   return (

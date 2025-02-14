@@ -570,12 +570,13 @@
     "github": "GitHub",
     "linked-in": "LinkedIn",
     "twitter": "Twitter",
-    "discord": "Discord"
+    "web": "Web",
+    "mail": "Mail"
   },
   "tour-mssg": {
     "home-layout-1": "¡Has iniciado sesión exitosamente! Echemos un vistazo.",
     "home-layout-2": "Para subir documentos para firmar tú mismo o para solicitar la firma de otros, simplemente selecciona los botones correspondientes.",
-    "home-layout-3": "¡Ya puedes empezar a utilizar OpenSign! Si necesitas soporte siéntete libre de contactarnos.",
+    "home-layout-3": "¡Ya puedes empezar a utilizar Excis! Si necesitas soporte siéntete libre de contactarnos.",
     "generate-token": "Mejora ahora para generar un token API de producción.",
     "opensign-drive-1": "Haz clic en los enlaces para navegar fácilmente por la estructura jerárquica de carpetas y ver los documentos de cada carpeta.",
     "opensign-drive-2": "Haz clic en el botón «Agregar» para crear una nueva carpeta o documento.",

@@ -8,7 +8,7 @@ const SocialMedia = () => {
   return (
     <React.Fragment>
       <NavLink
-        to="https://github.com/opensignlabs/opensign"
+        to="https://github.com/Vineforce/OpenSign"
         target="_blank"
         rel="noopener noreferrer"
       >
@@ -38,13 +38,23 @@ const SocialMedia = () => {
         </span>
       </NavLink>
       <NavLink
-        to="https://discord.com/invite/xe9TDuyAyj"
+        to="https://excis.com"
         target="_blank"
         rel="noopener noreferrer"
       >
-        <i aria-hidden="true" className="fa-brands fa-discord"></i>
+        <i aria-hidden="true" className="fa fa-globe"></i>
         <span className="fa-sr-only">
-          OpenSign&apos;s {t("social-media.discord")}
+          OpenSign&apos;s {t("social-media.web")}
+        </span>
+      </NavLink>
+      <NavLink
+        to="mailto:info@vineforce.net"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <i aria-hidden="true" className="fa fa-envelope"></i>
+        <span className="fa-sr-only">
+          OpenSign&apos;s {t("social-media.mail")}
         </span>
       </NavLink>
     </React.Fragment>

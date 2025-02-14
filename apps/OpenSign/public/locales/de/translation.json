@@ -570,7 +570,8 @@
     "github": "Github",
     "linked-in": "LinkedIn",
     "twitter": "Twitter",
-    "discord": "Discord"
+    "web": "Web",
+    "mail": "Mail"
   },
   "tour-mssg": {
     "home-layout-1": "Sie haben sich erfolgreich angemeldet! Werfen wir einen Blick darauf.",
