@@ -614,7 +614,7 @@
     "Recent signature requests": "This is a list of documents that are waiting for your signature.",
     "Recently sent for signatures": "This is a list of documents you've sent to other parties for signature.",
     "Drafts": "This are documents you have started but have not finalized for sending.",
-    "public-template": "This video demonstrates how to set up your personalized public profile, such as ‘https://opensign.vineforce.net/your-username’. You’ll also learn how to customize your tagline and make your templates available for public signing.",
+    "public-template": "This video demonstrates how to set up your personalized public profile, such as ‘https://excis.com/your-username’. You’ll also learn how to customize your tagline and make your templates available for public signing.",
     "allowModify-widgets": "You can drag and drop any of these fields onto the document, in addition to the fields already designated for you by the document creator."
   },
   "enter-email-plaholder": "Add an email address and hit enter",

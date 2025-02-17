@@ -83,7 +83,7 @@ function AgreementContent(props) {
           <div className="h-[1px] bg-[#9f9f9f] w-full my-[15px]"></div>
           <span className="mt-2">{t("term-cond-p29")}</span>
           <a
-            href="ww.excis.com"
+            href="www.excis.com"
             target="_blank"
             className="text-blue-700 cursor-pointer"
           >
