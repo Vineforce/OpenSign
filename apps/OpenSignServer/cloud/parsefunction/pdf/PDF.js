@@ -102,7 +102,7 @@ async function sendNotifyMail(doc, signUser, mailProvider) {
       const creatorEmail = doc.ExtUserPtr.Email;
       const signerName = signUser.Name;
       const signerEmail = signUser.Email;
-      const mailLogo = 'https://qikinnovation.ams3.digitaloceanspaces.com/logo.png';
+      const mailLogo = 'https://www.excis.com/assets/images/main-logo.png';
       const viewDocUrl = `${process.env.PUBLIC_URL}/recipientSignPdf/${doc.objectId}`;
       const subject = `Document "${pdfName}" has been signed by ${signerName}`;
       const body =
@@ -112,11 +112,11 @@ async function sendNotifyMail(doc, signUser, mailProvider) {
         `</div><div style='padding:20px;font-family:system-ui;font-size:14px'><p>Dear ${creatorName},</p>` +
         `<p>${pdfName} has been signed by ${signerName} "${signerEmail}" successfully</p>` +
         `<p><a href=${viewDocUrl} target=_blank>View Document</a></p>` +
-        `</div></div><div><p>This is an automated email from OpenSign™. For any queries regarding this email, please contact the sender ${creatorEmail} directly. If you think this email is inappropriate or spam, you may file a complaint with OpenSign™ <a href=www.opensignlabs.com target=_blank>here</a>.</p></div></div></body></html>`;
+        `</div></div><div><p>This is an automated email from Excis. For any queries regarding this email, please contact the sender ${creatorEmail} directly. If you think this email is inappropriate or spam, you may file a complaint with Excis <a href=https://www.excis.com target=_blank>here</a>.</p></div></div></body></html>`;
 
       const params = {
         extUserId: sender.objectId,
-        from: 'OpenSign™',
+        from: 'Excis',
         recipient: creatorEmail,
         subject: subject,
         pdfName: pdfName,

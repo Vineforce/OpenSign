@@ -83,15 +83,15 @@ function AgreementContent(props) {
           <div className="h-[1px] bg-[#9f9f9f] w-full my-[15px]"></div>
           <span className="mt-2">{t("term-cond-p29")}</span>
           <a
-            href="www.opensignlabs.com"
+            href="www.excis.com"
             target="_blank"
             className="text-blue-700 cursor-pointer"
           >
             {" "}
-            www.opensignlabs.com{" "}
+            www.excis.com{" "}
           </a>
           <span>{t("term-cond-p30")}</span>
-          <span className="font-medium"> support@opensignlabs.com </span>
+          <span className="font-medium"> info@vineforce.net </span>
           <div className="h-[1px] bg-[#9f9f9f] w-full my-[15px]"></div>
           <div className="mt-6 flex justify-start gap-2">
             <button
