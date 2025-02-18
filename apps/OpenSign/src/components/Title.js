@@ -4,8 +4,8 @@ import { Helmet } from "react-helmet";
 function Title({ title, drive }) {
   return (
     <Helmet>
-      <title>{drive ? title : `${title} - Excis™`}</title>
-      <meta name="description" content={`${title} - Excis™`} />
+      <title>{drive ? title : `${title} - Excis`}</title>
+      <meta name="description" content={`${title} - Excis`} />
       <link
         rel="icon"
         type="image/png"

@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import { formJson } from "../json/FormJson";
 import Parse from "parse";
-import DropboxChooser from "../components/shared/fields/DropboxChoose";
 import Alert from "../primitives/Alert";
 import SelectFolder from "../components/shared/fields/SelectFolder";
 import SignersInput from "../components/shared/fields/SignersInput";
@@ -10,32 +9,19 @@ import Title from "../components/Title";
 import PageNotFound from "./PageNotFound";
 import { SaveFileSize } from "../constant/saveFileSize";
 import {
-  checkIsSubscribed,
+  flattenPdf,
+  generatePdfName,
   generateTitleFromFilename,
   getFileName,
+  getSecureUrl,
   toDataUrl
 } from "../constant/Utils";
 import { PDFDocument } from "pdf-lib";
 import axios from "axios";
-import { isEnableSubscription } from "../constant/const";
 import ModalUi from "../primitives/ModalUi";
 import { Tooltip } from "react-tooltip";
-import Upgrade from "../primitives/Upgrade";
 import Loader from "../primitives/Loader";
 import { useTranslation } from "react-i18next";
-
-// `generatePdfName` is used to generate file name
-function generatePdfName(length) {
-  const characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let result = "";
-  const charactersLength = characters.length;
-
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * charactersLength));
-  }
-  return result;
-}
 
 // `Form` render all type of Form on this basis of their provided in path
 function Form() {
@@ -68,7 +54,11 @@ const Forms = (props) => {
     remindOnceInEvery: 5,
     autoreminder: false,
     IsEnableOTP: "false",
-    IsTourEnabled: "false"
+    IsTourEnabled: "false",
+    NotifyOnSignatures: "",
+    Bcc: [],
+    RedirectUrl: "",
+    AllowModifications: false
   });
   const [fileupload, setFileUpload] = useState("");
   const [fileload, setfileload] = useState(false);
@@ -79,8 +69,9 @@ const Forms = (props) => {
   const [isPassword, setIsPassword] = useState(false);
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [isCorrectPass, setIsCorrectPass] = useState(true);
-  const [isSubscribe, setIsSubscribe] = useState(false);
   const [isAdvanceOpt, setIsAdvanceOpt] = useState(false);
+  const [bcc, setBcc] = useState([]);
+
   const handleStrInput = (e) => {
     setIsCorrectPass(true);
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -95,31 +86,30 @@ const Forms = (props) => {
   }, [props.title]);
 
   useEffect(() => {
-    fetchSubscription();
+    initializeValues();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const fetchSubscription = async () => {
-    if (isEnableSubscription) {
-      const subscribe = await checkIsSubscribed();
-      setIsSubscribe(subscribe.isValid);
-    }
+  const initializeValues = async () => {
+      setFormData((obj) => ({ ...obj, NotifyOnSignatures: true }));
   };
 
   function getFileAsArrayBuffer(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-
-      reader.onload = (e) => {
-        resolve(e.target.result);
-      };
-
-      reader.onerror = (e) => {
-        reject(e.target.error);
-      };
-
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (e) => reject(e.target.error);
       reader.readAsArrayBuffer(file);
     });
   }
+
+  // `removeFile` is used to reset progress, percentage and remove file if exists
+  const removeFile = (e) => {
+    setfileload(false);
+    setpercentage(0);
+    if (e) {
+      e.target.value = "";
+    }
+  };
   const handleFileInput = async (e) => {
     setpercentage(0);
     try {
@@ -130,117 +120,141 @@ const Forms = (props) => {
         if (mb > maxFileSize) {
           alert(`${t("file-alert-1")} ${maxFileSize} MB`);
           setFileUpload("");
-          e.target.value = "";
+          removeFile(e);
           return;
         } else {
           if (files?.[0]?.type === "application/pdf") {
-            try {
-              const res = await getFileAsArrayBuffer(files[0]);
-              await PDFDocument.load(res);
-              handleFileUpload(files[0]);
-            } catch (err) {
-              if (err?.message?.includes("is encrypted")) {
+            const size = files?.[0]?.size;
+            const name = generatePdfName(16);
+            const pdfName = `${name?.split(".")[0]}.pdf`;
+            setfileload(true);
+              try {
+                const res = await getFileAsArrayBuffer(files[0]);
+                const flatPdf = await flattenPdf(res);
+                const parseFile = new Parse.File(
+                  pdfName,
+                  [...flatPdf],
+                  "application/pdf"
+                );
+
                 try {
-                  await Parse.Cloud.run("encryptedpdf", {
-                    email: Parse.User.current().getEmail()
+                  const response = await parseFile.save({
+                    progress: (progressValue, loaded, total, { type }) => {
+                      if (type === "upload" && progressValue !== null) {
+                        const percentCompleted = Math.round(
+                          (loaded * 100) / total
+                        );
+                        setpercentage(percentCompleted);
+                      }
+                    }
                   });
-                } catch (err) {
-                  console.log("err in sending posthog encryptedpdf", err);
-                }
-                try {
-                  setIsDecrypting(true);
-                  const size = files?.[0].size;
-                  const name = generatePdfName(16);
-                  const url = "https://ai.nxglabs.in/decryptpdf"; //
-                  let formData = new FormData();
-                  formData.append("file", files[0]);
-                  formData.append("password", "");
-                  const config = {
-                    headers: { "content-type": "multipart/form-data" },
-                    responseType: "blob"
-                  };
-                  const response = await axios.post(url, formData, config);
-                  const pdfBlob = new Blob([response.data], {
-                    type: "application/pdf"
-                  });
-                  const pdfFile = new File([pdfBlob], name, {
-                    type: "application/pdf"
-                  });
-                  setIsDecrypting(false);
-                  setfileload(true);
-                  const fileAdapterId =
-                    extUserData?.TenantId?.ActiveFileAdapter || "";
-                  if (fileAdapterId) {
-                    const base64 = await toDataUrl(pdfFile);
-                    const fileBase64 = base64.split(",").pop();
-                    const ext = files?.[0]?.name?.split(".").pop();
-                    const fileRes = await saveToCustomFile(
-                      fileBase64,
-                      `${name}.${ext}`,
-                      fileAdapterId
-                    );
+                  // The response object will contain information about the uploaded file
+                  // You can access the URL of the uploaded file using response.url()
+                  if (response.url()) {
+                    const fileRes = await getSecureUrl(response.url());
                     if (fileRes.url) {
                       setFileUpload(fileRes.url);
                       setfileload(false);
-                      setpercentage(0);
+                      const tenantId = localStorage.getItem("TenantId");
                       const title = generateTitleFromFilename(files?.[0]?.name);
                       setFormData((obj) => ({ ...obj, Name: title }));
-                      const tenantId = localStorage.getItem("TenantId");
                       SaveFileSize(size, fileRes.url, tenantId);
                       return fileRes.url;
                     } else {
-                      setfileload(false);
-                      setpercentage(0);
-                      setFileUpload("");
+                      removeFile(e);
+                    }
+                  } else {
+                    removeFile(e);
+                  }
+                } catch (error) {
+                  removeFile(e);
+                  console.error("Error uploading file:", error);
+                }
+              } catch (err) {
+                if (err?.message?.includes("is encrypted")) {
+                  try {
+                    await Parse.Cloud.run("encryptedpdf", {
+                      email: Parse.User.current().getEmail()
+                    });
+                  } catch (err) {
+                    console.log("err in sending posthog encryptedpdf", err);
+                  }
+                  try {
+                    setIsDecrypting(true);
+                    const size = files?.[0].size;
+                    const name = generatePdfName(16);
+                    const url = "https://ai.nxglabs.in/decryptpdf"; //
+                    let formData = new FormData();
+                    formData.append("file", files[0]);
+                    formData.append("password", "");
+                    const config = {
+                      headers: { "content-type": "multipart/form-data" },
+                      responseType: "blob"
+                    };
+                    const response = await axios.post(url, formData, config);
+                    const pdfBlob = new Blob([response.data], {
+                      type: "application/pdf"
+                    });
+                    const pdfFile = new File([pdfBlob], name, {
+                      type: "application/pdf"
+                    });
+                    setIsDecrypting(false);
+                    setfileload(true);
+                      const res = await getFileAsArrayBuffer(pdfFile);
+                      const flatPdf = await flattenPdf(res);
+                      // Upload the file to Parse Server
+                      const parseFile = new Parse.File(
+                        name,
+                        [...flatPdf],
+                        "application/pdf"
+                      );
+
+                      await parseFile.save({
+                        progress: (progressValue, loaded, total, { type }) => {
+                          if (type === "upload" && progressValue !== null) {
+                            const percentCompleted = Math.round(
+                              (loaded * 100) / total
+                            );
+                            setpercentage(percentCompleted);
+                          }
+                        }
+                      });
+
+                      // Retrieve the URL of the uploaded file
+                      if (parseFile.url()) {
+                        const fileRes = await getSecureUrl(parseFile.url());
+                        if (fileRes.url) {
+                          setFileUpload(fileRes.url);
+                          removeFile();
+                          const title = generateTitleFromFilename(
+                            files?.[0]?.name
+                          );
+                          setFormData((obj) => ({ ...obj, Name: title }));
+                          const tenantId = localStorage.getItem("TenantId");
+                          SaveFileSize(size, fileRes.url, tenantId);
+                          return fileRes.url;
+                        } else {
+                          removeFile(e);
+                        }
+                      } else {
+                        removeFile(e);
+                      }
+                  } catch (err) {
+                    removeFile();
+                    if (err?.response?.status === 401) {
+                      setIsPassword(true);
+                    } else {
+                      console.log("Error uploading file: ", err?.response);
+                      setIsDecrypting(false);
                       e.target.value = "";
                     }
-                  } else {
-                    // Upload the file to Parse Server
-                    const parseFile = new Parse.File(
-                      name,
-                      pdfFile,
-                      "application/pdf"
-                    );
-
-                    await parseFile.save({
-                      progress: (progressValue, loaded, total, { type }) => {
-                        if (type === "upload" && progressValue !== null) {
-                          const percentCompleted = Math.round(
-                            (loaded * 100) / total
-                          );
-                          setpercentage(percentCompleted);
-                        }
-                      }
-                    });
-
-                    // Retrieve the URL of the uploaded file
-                    if (parseFile.url()) {
-                      setFileUpload(parseFile.url());
-                      setfileload(false);
-                      const title = generateTitleFromFilename(files?.[0]?.name);
-                      setFormData((obj) => ({ ...obj, Name: title }));
-                      const tenantId = localStorage.getItem("TenantId");
-                      SaveFileSize(size, parseFile.url(), tenantId);
-                      return parseFile.url();
-                    }
                   }
-                } catch (err) {
-                  setfileload(false);
-                  setpercentage(0);
-                  if (err?.response?.status === 401) {
-                    setIsPassword(true);
-                  } else {
-                    console.log("Error uploading file: ", err?.response);
-                    setIsDecrypting(false);
-                    e.target.value = "";
-                  }
+                } else {
+                  console.log("err ", err);
+                  setFileUpload("");
+                  removeFile(e);
                 }
-              } else {
-                console.log("err ", err);
-                setFileUpload("");
-                e.target.value = "";
               }
-            }
           } else {
             const isImage = files?.[0]?.type.includes("image/");
             if (isImage) {
@@ -265,35 +279,6 @@ const Forms = (props) => {
               });
               const size = files?.[0]?.size;
               const name = generatePdfName(16);
-              const fileAdapterId =
-                extUserData?.TenantId?.ActiveFileAdapter || "";
-              if (fileAdapterId) {
-                const base64 = await pdfDoc.saveAsBase64({
-                  useObjectStreams: false
-                });
-                setfileload(true);
-                const fileBase64 = base64.split(",").pop();
-                const ext = files?.[0]?.name?.split(".").pop();
-                const fileRes = await saveToCustomFile(
-                  fileBase64,
-                  `${name}.${ext}`,
-                  fileAdapterId
-                );
-                if (fileRes.url) {
-                  setFileUpload(fileRes.url);
-                  setfileload(false);
-                  setpercentage(0);
-                  const title = generateTitleFromFilename(files?.[0]?.name);
-                  setFormData((obj) => ({ ...obj, Name: title }));
-                  const tenantId = localStorage.getItem("TenantId");
-                  SaveFileSize(size, fileRes.url, tenantId);
-                  return fileRes.url;
-                } else {
-                  setfileload(false);
-                  setpercentage(0);
-                  e.target.value = "";
-                }
-              } else {
                 const getFile = await pdfDoc.save({
                   useObjectStreams: false
                 });
@@ -318,53 +303,26 @@ const Forms = (props) => {
                   });
                   // The response object will contain information about the uploaded file
                   // You can access the URL of the uploaded file using response.url()
-                  setFileUpload(response.url());
-                  setfileload(false);
                   if (response.url()) {
-                    const tenantId = localStorage.getItem("TenantId");
-                    const title = generateTitleFromFilename(files?.[0]?.name);
-                    setFormData((obj) => ({ ...obj, Name: title }));
-                    SaveFileSize(size, response.url(), tenantId);
-                    return response.url();
+                    const fileRes = await getSecureUrl(response.url());
+                    if (fileRes.url) {
+                      setFileUpload(fileRes.url);
+                      setfileload(false);
+                      const tenantId = localStorage.getItem("TenantId");
+                      const title = generateTitleFromFilename(files?.[0]?.name);
+                      setFormData((obj) => ({ ...obj, Name: title }));
+                      SaveFileSize(size, fileRes.url, tenantId);
+                      return fileRes.url;
+                    } else {
+                      removeFile(e);
+                    }
+                  } else {
+                    removeFile(e);
                   }
                 } catch (error) {
-                  e.target.value = "";
-                  setfileload(false);
-                  setpercentage(0);
+                  removeFile(e);
                   console.error("Error uploading file:", error);
                 }
-              }
-            } else {
-              if (isEnableSubscription) {
-                try {
-                  setfileload(true);
-                  const url = "https://ai.nxglabs.in/docxtopdf";
-                  let formData = new FormData();
-                  formData.append("file", files[0]);
-                  const config = {
-                    headers: {
-                      "content-type": "multipart/form-data",
-                      sessiontoken: Parse.User.current().getSessionToken()
-                    },
-                    signal: abortController.signal
-                  };
-                  const res = await axios.post(url, formData, config);
-                  if (res.data) {
-                    setFileUpload(res.data.url);
-                    setfileload(false);
-                    const title = generateTitleFromFilename(files?.[0]?.name);
-                    setFormData((obj) => ({ ...obj, Name: title }));
-                  }
-                } catch (err) {
-                  e.target.value = "";
-                  setfileload(false);
-                  setpercentage(0);
-                  console.log("err in libreconverter ", err);
-                  alert(
-                    "We are currently experiencing some issues with processing DOCX files. Please upload the PDF version or contact us on support@opensignlabs.com"
-                  );
-                }
-              }
             }
           }
         }
@@ -377,159 +335,23 @@ const Forms = (props) => {
       return false;
     }
   };
-
-  const saveToCustomFile = async (base64, filename, fileAdapterId) => {
+  // `isValidURL` is used to check valid webhook url
+  function isValidURL(value) {
     try {
-      const savetos3 = await Parse.Cloud.run("savetofileadapter", {
-        fileBase64: base64,
-        fileName: filename,
-        id: fileAdapterId
-      });
-      return { url: savetos3.url };
-    } catch (err) {
-      console.log("err in save to customfile", err);
-      alert(err?.message);
-      if (inputFileRef.current) {
-        inputFileRef.current.value = ""; // Set file input value to empty string
-      }
-      return { url: "" };
+      const url = new URL(value);
+      return url.protocol === "https:" || url.protocol === "http:";
+    } catch (error) {
+      return false;
     }
-  };
-
-  const handleFileUpload = async (file) => {
-    setfileload(true);
-    const size = file.size;
-    const name = generatePdfName(16);
-    const pdfFile = file;
-    const fileAdapterId = extUserData?.TenantId?.ActiveFileAdapter || "";
-    if (fileAdapterId) {
-      const base64 = await toDataUrl(file);
-      const fileBase64 = base64.split(",").pop();
-      const ext = file?.name?.split(".").pop();
-      const fileRes = await saveToCustomFile(
-        fileBase64,
-        `${name}.${ext}`,
-        fileAdapterId
-      );
-      if (fileRes.url) {
-        setFileUpload(fileRes?.url);
-        const tenantId = localStorage.getItem("TenantId");
-        const title = generateTitleFromFilename(file.name);
-        setFormData((obj) => ({ ...obj, Name: title }));
-        SaveFileSize(size, fileRes.url, tenantId);
-      }
-      setfileload(false);
-      setpercentage(0);
-    } else {
-      const parseFile = new Parse.File(name, pdfFile);
-      try {
-        const response = await parseFile.save({
-          progress: (progressValue, loaded, total, { type }) => {
-            if (type === "upload" && progressValue !== null) {
-              const percentCompleted = Math.round((loaded * 100) / total);
-              setpercentage(percentCompleted);
-            }
-          }
-        });
-
-        // The response object will contain information about the uploaded file
-        // You can access the URL of the uploaded file using response.url()
-        setFileUpload(response.url());
-        setfileload(false);
-        if (response.url()) {
-          const tenantId = localStorage.getItem("TenantId");
-          const title = generateTitleFromFilename(file.name);
-          setFormData((obj) => ({ ...obj, Name: title }));
-          SaveFileSize(size, response.url(), tenantId);
-          return response.url();
-        }
-      } catch (error) {
-        setfileload(false);
-        setpercentage(0);
-        console.error("Error uploading file:", error);
-      }
-    }
-  };
-  async function uriToBase64(uri) {
-    const response = await fetch(uri);
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob); // Convert to Base64
-    });
   }
-  const dropboxSuccess = async (files) => {
-    setfileload(true);
-    const file = files[0];
-    const size = file.bytes;
-    const url = file.link;
-    const mb = Math.round(file.bytes / Math.pow(1024, 2));
-
-    if (mb > maxFileSize) {
-      setTimeout(() => {
-        alert(`${t("file-alert-1")}${maxFileSize} MB`);
-      }, 500);
-      return;
-    } else {
-      const name = generatePdfName(16);
-      const fileAdapterId = extUserData?.TenantId?.ActiveFileAdapter || "";
-      if (fileAdapterId) {
-        const base64 = await uriToBase64(url);
-        const fileBase64 = base64.split(",").pop();
-        const ext = file?.name?.split(".").pop();
-        const fileRes = await saveToCustomFile(
-          fileBase64,
-          `${name}.${ext}`,
-          fileAdapterId
-        );
-        if (fileRes.url) {
-          setFileUpload(fileRes.url);
-          setfileload(false);
-          setpercentage(0);
-          const title = generateTitleFromFilename(files?.[0]?.name);
-          setFormData((obj) => ({ ...obj, Name: title }));
-          const tenantId = localStorage.getItem("TenantId");
-          SaveFileSize(size, fileRes.url, tenantId);
-          return fileRes.url;
-        } else {
-          setfileload(false);
-          setpercentage(0);
-        }
-      } else {
-        const parseFile = new Parse.File(name, { uri: url });
-        try {
-          const response = await parseFile.save({
-            progress: (progressValue, loaded, total, { type }) => {
-              if (type === "upload" && progressValue !== null) {
-                const percentCompleted = Math.round((loaded * 100) / total);
-                setpercentage(percentCompleted);
-              }
-            }
-          });
-          setFileUpload(response.url());
-          setfileload(false);
-          if (response.url()) {
-            const tenantId = localStorage.getItem("TenantId");
-            const title = generateTitleFromFilename(file.name);
-            setFormData((obj) => ({ ...obj, Name: title }));
-            SaveFileSize(size, response.url(), tenantId);
-            return response.url();
-          }
-        } catch (error) {
-          setfileload(false);
-          setpercentage(0);
-          console.error("Error uploading file:", error);
-        }
-      }
-    }
-  };
-  const dropboxCancel = async () => {};
   const handleSubmit = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (fileupload) {
+      if (formData.RedirectUrl && !isValidURL(formData?.RedirectUrl)) {
+        alert(t("invalid-redirect-url"));
+        return;
+      }
       setIsSubmit(true);
       try {
         const currentUser = Parse.User.current();
@@ -542,6 +364,13 @@ const Forms = (props) => {
             "TimeToCompleteDays",
             parseInt(formData?.TimeToCompleteDays)
           );
+          if (
+            extUserData?.TenantId?.RequestBody &&
+            extUserData?.TenantId?.RequestSubject
+          ) {
+            object.set("RequestBody", extUserData?.TenantId?.RequestBody);
+            object.set("RequestSubject", extUserData?.TenantId?.RequestSubject);
+          }
         }
         if (props.title !== "Sign Yourself") {
           const isChecked = formData.SendinOrder === "false" ? false : true;
@@ -551,12 +380,13 @@ const Forms = (props) => {
           object.set("AutomaticReminders", formData.autoreminder);
           object.set("RemindOnceInEvery", parseInt(formData.remindOnceInEvery));
           object.set("IsTourEnabled", isTourEnabled);
-          if (isEnableSubscription) {
-            const IsEnableOTP =
-              formData?.IsEnableOTP === "false" ? false : true;
-            object.set("IsEnableOTP", IsEnableOTP);
-          } else {
+            object.set("AllowModifications", false);
             object.set("IsEnableOTP", false);
+            if (formData.NotifyOnSignatures !== undefined) {
+              object.set("NotifyOnSignatures", formData.NotifyOnSignatures);
+            }
+          if (formData?.RedirectUrl) {
+            object.set("RedirectUrl", formData.RedirectUrl);
           }
         }
         object.set("URL", fileupload);
@@ -571,6 +401,14 @@ const Forms = (props) => {
         if (signers && signers.length > 0) {
           object.set("Signers", signers);
         }
+        if (bcc && bcc.length > 0) {
+          const Bcc = bcc.map((x) => ({
+            __type: "Pointer",
+            className: "contracts_Contactbook",
+            objectId: x.objectId
+          }));
+          object.set("Bcc", Bcc);
+        }
         const ExtCls = JSON.parse(localStorage.getItem("Extand_Class"));
         object.set("ExtUserPtr", {
           __type: "Pointer",
@@ -583,7 +421,12 @@ const Forms = (props) => {
         const res = await object.save();
         if (res) {
           setSigners([]);
+          setBcc([]);
           setFolder({ ObjectId: "", Name: "" });
+          const notifySign =
+                extUserData?.NotifyOnSignatures
+                ? extUserData?.NotifyOnSignatures
+                : true;
           setFormData({
             Name: "",
             Description: "",
@@ -595,10 +438,13 @@ const Forms = (props) => {
             SendinOrder: "true",
             password: "",
             file: "",
+            NotifyOnSignatures: notifySign,
             remindOnceInEvery: 5,
             autoreminder: false,
             IsEnableOTP: "false",
-            IsTourEnabled: "true"
+            IsTourEnabled: "true",
+            RedirectUrl: "",
+            AllowModifications: false
           });
           setFileUpload("");
           setpercentage(0);
@@ -635,11 +481,27 @@ const Forms = (props) => {
     }
   };
 
+  const handleBcc = (data) => {
+    if (data && data.length > 0) {
+      const trimEmail = data.map((item) => ({
+        objectId: item?.value,
+        Name: item?.label,
+        Email: item?.email
+      }));
+      setBcc(trimEmail);
+    }
+  };
+
   const handleReset = () => {
     setIsReset(true);
     setSigners([]);
+    setBcc([]);
     setFolder({ ObjectId: "", Name: "" });
-    setFormData({
+    const notifySign =
+          extUserData?.NotifyOnSignatures
+          ? extUserData?.NotifyOnSignatures
+          : true;
+    let obj = {
       Name: "",
       Description: "",
       Note:
@@ -653,10 +515,14 @@ const Forms = (props) => {
       remindOnceInEvery: 5,
       autoreminder: false,
       IsEnableOTP: "false",
-      IsTourEnabled: "true"
-    });
+      IsTourEnabled: "true",
+      NotifyOnSignatures: notifySign,
+      RedirectUrl: "",
+      AllowModifications: false
+    };
+    setFormData(obj);
+    removeFile();
     setFileUpload("");
-    setpercentage(0);
     setTimeout(() => setIsReset(false), 50);
   };
   const handleCancel = () => {
@@ -688,33 +554,9 @@ const Forms = (props) => {
         type: "application/pdf"
       });
       setIsDecrypting(false);
-      const fileAdapterId = extUserData?.TenantId?.ActiveFileAdapter || "";
-      // Upload the file to Parse Server
-      if (fileAdapterId) {
-        const base64 = await toDataUrl(pdfFile);
-        const fileBase64 = base64.split(",").pop();
-        const ext = formData?.file?.name?.split(".").pop();
-        const fileRes = await saveToCustomFile(
-          fileBase64,
-          `${name}.${ext}`,
-          fileAdapterId
-        );
-        if (fileRes.url) {
-          setFormData((prev) => ({ ...prev, password: "" }));
-          setFileUpload(fileRes?.url);
-          setfileload(false);
-          setpercentage(0);
-          const title = generateTitleFromFilename(formData?.file?.name);
-          setFormData((obj) => ({ ...obj, Name: title }));
-          const tenantId = localStorage.getItem("TenantId");
-          SaveFileSize(size, fileRes.url, tenantId);
-          return fileRes.url;
-        } else {
-          setfileload(false);
-          setpercentage(0);
-        }
-      } else {
-        const parseFile = new Parse.File(name, pdfFile, "application/pdf");
+        const res = await getFileAsArrayBuffer(pdfFile);
+        const flatPdf = await flattenPdf(res);
+        const parseFile = new Parse.File(name, [...flatPdf], "application/pdf");
         await parseFile.save({
           progress: (progressValue, loaded, total, { type }) => {
             if (type === "upload" && progressValue !== null) {
@@ -725,28 +567,33 @@ const Forms = (props) => {
         });
         // Retrieve the URL of the uploaded file
         if (parseFile.url()) {
-          setFormData((prev) => ({ ...prev, password: "" }));
-          setFileUpload(parseFile.url());
-          setfileload(false);
-          setpercentage(0);
-          const title = generateTitleFromFilename(formData?.file?.name);
-          setFormData((obj) => ({ ...obj, Name: title }));
-          const tenantId = localStorage.getItem("TenantId");
-          SaveFileSize(size, parseFile.url(), tenantId);
-          return parseFile.url();
+          const fileRes = await getSecureUrl(parseFile.url());
+          if (fileRes.url) {
+            setFileUpload(fileRes.url);
+            removeFile();
+            const title = generateTitleFromFilename(formData?.file?.name);
+            setFormData((obj) => ({ ...obj, password: "", Name: title }));
+            const tenantId = localStorage.getItem("TenantId");
+            SaveFileSize(size, fileRes.url, tenantId);
+            return fileRes.url;
+          } else {
+            removeFile();
+            setFormData((prev) => ({ ...prev, password: "" }));
+            setIsDecrypting(false);
+            if (inputFileRef.current) {
+              inputFileRef.current.value = ""; // Set file input value to empty string
+            }
+          }
         } else {
-          setfileload(false);
-          setpercentage(0);
+          removeFile();
           setFormData((prev) => ({ ...prev, password: "" }));
           setIsDecrypting(false);
           if (inputFileRef.current) {
             inputFileRef.current.value = ""; // Set file input value to empty string
           }
         }
-      }
     } catch (err) {
-      setfileload(false);
-      setpercentage(0);
+      removeFile();
       if (err?.response?.status === 401) {
         setIsPassword(true);
         setIsCorrectPass(false);
@@ -769,9 +616,12 @@ const Forms = (props) => {
       inputFileRef.current.value = ""; // Set file input value to empty string
     }
   };
-  const handleAutoReminder = () => {
-    setFormData((prev) => ({ ...prev, autoreminder: !formData.autoreminder }));
+
+  // `handleNotifySignChange` is trigger when user change radio of notify on signatures
+  const handleNotifySignChange = (value) => {
+    setFormData((obj) => ({ ...obj, NotifyOnSignatures: value }));
   };
+
   return (
     <div className="shadow-md rounded-box my-[2px] p-3 bg-base-100 text-base-content">
       <Title title={props?.title} />
@@ -823,9 +673,26 @@ const Forms = (props) => {
             </form>
           </ModalUi>
           <form onSubmit={handleSubmit}>
-            <h1 className="text-[20px] font-semibold mb-4">
-              {t(`form-name.${props?.title}`)}
-            </h1>
+            <div className="mb-[11px]">
+              <h1 className="text-[20px] font-semibold">
+                {t(`form-name.${props?.title}`)}
+              </h1>
+              {props.title === "Sign Yourself" && (
+                <div className="text-gray-500 text-xs mt-1">
+                  {t("signyour-self-description")}
+                </div>
+              )}
+              {props.title === "Request Signatures" && (
+                <div className="text-gray-500 text-xs mt-1">
+                  {t("requestsign-description")}
+                </div>
+              )}
+              {props.title === "New Template" && (
+                <div className="text-gray-500 text-xs mt-1">
+                  {t("template-form-description")}
+                </div>
+              )}
+            </div>
             {fileload && (
               <div className="flex items-center gap-x-2">
                 <div className="h-2 rounded-full w-[200px] md:w-[400px] bg-gray-200">
@@ -846,8 +713,8 @@ const Forms = (props) => {
             )}
             <div className="text-xs">
               <label className="block">
-                {`${t("report-heading.File")} (${t("file-type")}${
-                  isEnableSubscription ? ", docx)" : ")"
+                {`${`${t("report-heading.File")} (${t("file-type")}`}${
+                      ")"
                 }`}
                 <span className="text-red-500 text-[13px]">*</span>
               </label>
@@ -864,12 +731,6 @@ const Forms = (props) => {
                       <i className="fa-light fa-xmark"></i>
                     </div>
                   </div>
-                  {process.env.REACT_APP_DROPBOX_API_KEY && (
-                    <DropboxChooser
-                      onSuccess={dropboxSuccess}
-                      onCancel={dropboxCancel}
-                    />
-                  )}
                 </div>
               ) : (
                 <div className="flex gap-1 justify-center items-center">
@@ -879,9 +740,7 @@ const Forms = (props) => {
                     onChange={(e) => handleFileInput(e)}
                     ref={inputFileRef}
                     accept={
-                      isEnableSubscription
-                        ? "application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg"
-                        : "application/pdf,image/png,image/jpeg"
+                          "application/pdf,image/png,image/jpeg"
                     }
                     onInvalid={(e) =>
                       e.target.setCustomValidity(t("input-required"))
@@ -889,12 +748,6 @@ const Forms = (props) => {
                     onInput={(e) => e.target.setCustomValidity("")}
                     required
                   />
-                  {process.env.REACT_APP_DROPBOX_API_KEY && (
-                    <DropboxChooser
-                      onSuccess={dropboxSuccess}
-                      onCancel={dropboxCancel}
-                    />
-                  )}
                 </div>
               )}
             </div>
@@ -930,8 +783,10 @@ const Forms = (props) => {
             )}
             {props.signers && (
               <SignersInput
+                label={t("signers")}
                 onChange={handleSigners}
                 isReset={isReset}
+                helptextZindex={50}
                 required
               />
             )}
@@ -1036,33 +891,6 @@ const Forms = (props) => {
                   )}
                   {isAdvanceOpt && (
                     <>
-                      {isEnableSubscription &&
-                        props.title === "New Template" && (
-                          <div className="text-xs mt-[15px]">
-                            <span
-                              className={isSubscribe ? "" : " text-gray-300"}
-                            >
-                              {t("auto-reminder")}{" "}
-                              {!isSubscribe && isEnableSubscription && (
-                                <Upgrade />
-                              )}
-                            </span>
-                            <label
-                              className={`${
-                                isSubscribe
-                                  ? "cursor-pointer "
-                                  : "pointer-events-none opacity-50"
-                              } relative block items-center mb-0 mt-1.5`}
-                            >
-                              <input
-                                type="checkbox"
-                                className="op-toggle transition-all checked:[--tglbg:#3368ff] checked:bg-white"
-                                checked={formData.autoreminder}
-                                onChange={handleAutoReminder}
-                              />
-                            </label>
-                          </div>
-                        )}
                       {props.title === "New Template" &&
                         formData?.autoreminder === true && (
                           <div className="text-xs mt-2">
@@ -1162,8 +990,7 @@ const Forms = (props) => {
                           </div>
                         </>
                       )}
-
-                      <div className="overflow-y-auto z-[500] transition-all">
+                      <div className="overflow-y-auto z-[40] transition-all">
                         {props.title === "Request Signatures" && (
                           <div className="text-xs mt-2">
                             <label className="block">
@@ -1187,6 +1014,17 @@ const Forms = (props) => {
                           </div>
                         )}
                       </div>
+                      {props.bcc && (
+                        <SignersInput
+                          label={t("Bcc")}
+                          initialData={bcc}
+                          onChange={handleBcc}
+                          isReset={isReset}
+                          helptextZindex={50}
+                          helpText={t("bcc-help")}
+                          isCaptureAllData
+                        />
+                      )}
                     </>
                   )}
                 </div>
@@ -1194,9 +1032,6 @@ const Forms = (props) => {
                   <div
                     style={{
                       height:
-                        props.title === "New Template" && isEnableSubscription
-                          ? "220px"
-                          : !isEnableSubscription &&
                               props.title === "New Template"
                             ? "100px"
                             : "280px"
@@ -1206,28 +1041,6 @@ const Forms = (props) => {
                 )}
                 {isAdvanceOpt && (
                   <div className="card bg-base-100 rounded-box  p-3 flex-grow ">
-                    {isEnableSubscription && props.title !== "New Template" && (
-                      <div className="text-xs mt-[10px]">
-                        <span className={isSubscribe ? "" : " text-gray-300"}>
-                          {t("auto-reminder")}{" "}
-                          {!isSubscribe && isEnableSubscription && <Upgrade />}
-                        </span>
-                        <label
-                          className={`${
-                            isSubscribe
-                              ? "cursor-pointer "
-                              : "pointer-events-none opacity-50"
-                          } relative block items-center mb-0 mt-1.5`}
-                        >
-                          <input
-                            type="checkbox"
-                            className="op-toggle transition-all checked:[--tglbg:#3368ff] checked:bg-white"
-                            checked={formData.autoreminder}
-                            onChange={handleAutoReminder}
-                          />
-                        </label>
-                      </div>
-                    )}
                     {formData?.autoreminder === true &&
                       props.title !== "New Template" && (
                         <div className="text-xs mt-2">
@@ -1250,85 +1063,6 @@ const Forms = (props) => {
                         </div>
                       )}
                     <span className="font-[400] mt-2">{t("form-title-2")}</span>
-                    {isEnableSubscription && (
-                      <div className="text-xs mt-4">
-                        <label className="block">
-                          <span className={isSubscribe ? "" : " text-gray-300"}>
-                            {t("isenable-otp")}{" "}
-                            <a
-                              data-tooltip-id="isenableotp-tooltip"
-                              className="ml-1"
-                            >
-                              <sup>
-                                <i className="fa-light fa-question rounded-full border-[#33bbff] text-[#33bbff] text-[13px] border-[1px] py-[1.5px] px-[4px]"></i>
-                              </sup>
-                            </a>{" "}
-                            {!isSubscribe && isEnableSubscription && (
-                              <Upgrade />
-                            )}
-                          </span>
-                          <Tooltip id="isenableotp-tooltip" className="z-[999]">
-                            <div className="max-w-[200px] md:max-w-[450px]">
-                              <p className="font-bold">{t("isenable-otp")}</p>
-                              <p>{t("isenable-otp-help.p1")}</p>
-                              <p className="p-[5px]">
-                                <ol className="list-disc">
-                                  <li>
-                                    <span className="font-bold">
-                                      {t("yes")}:{" "}
-                                    </span>
-                                    <span>{t("isenable-otp-help.p2")}</span>
-                                  </li>
-                                  <li>
-                                    <span className="font-bold">
-                                      {t("no")}:{" "}
-                                    </span>
-                                    <span>{t("isenable-otp-help.p3")}</span>
-                                  </li>
-                                </ol>
-                              </p>
-                              <p>{t("isenable-otp-help.p4")}</p>
-                            </div>
-                          </Tooltip>
-                        </label>
-                        <div className="flex flex-col md:flex-row md:gap-4">
-                          <div
-                            className={`${
-                              isSubscribe
-                                ? ""
-                                : "pointer-events-none opacity-50"
-                            } flex items-center gap-2 ml-2 mb-1 `}
-                          >
-                            <input
-                              type="radio"
-                              value={"true"}
-                              className="op-radio op-radio-xs"
-                              name="IsEnableOTP"
-                              checked={formData.IsEnableOTP === "true"}
-                              onChange={handleStrInput}
-                            />
-                            <div className="text-center">{t("yes")}</div>
-                          </div>
-                          <div
-                            className={`${
-                              isSubscribe
-                                ? ""
-                                : "pointer-events-none opacity-50"
-                            } flex items-center gap-2 ml-2 mb-1 `}
-                          >
-                            <input
-                              type="radio"
-                              value={"false"}
-                              name="IsEnableOTP"
-                              className="op-radio op-radio-xs"
-                              checked={formData.IsEnableOTP === "false"}
-                              onChange={handleStrInput}
-                            />
-                            <div className="text-center">{t("no")}</div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                     <div className="text-xs mt-3">
                       <label className="block">
                         <span>
@@ -1340,7 +1074,7 @@ const Forms = (props) => {
                             <sup>
                               <i className="fa-light fa-question rounded-full border-[#33bbff] text-[#33bbff] text-[13px] border-[1px] py-[1.5px] px-[4px]"></i>
                             </sup>
-                          </a>{" "}
+                          </a>
                         </span>
                         <Tooltip id="istourenabled-tooltip" className="z-[999]">
                           <div className="max-w-[200px] md:max-w-[450px]">
@@ -1364,7 +1098,7 @@ const Forms = (props) => {
                         </Tooltip>
                       </label>
                       <div className="flex flex-col md:flex-row md:gap-4">
-                        <div className={`  flex items-center gap-2 ml-2 mb-1 `}>
+                        <div className="flex items-center gap-2 ml-2 mb-1">
                           <input
                             type="radio"
                             value={"true"}
@@ -1375,7 +1109,7 @@ const Forms = (props) => {
                           />
                           <div className="text-center">{t("yes")}</div>
                         </div>
-                        <div className={` flex items-center gap-2 ml-2 mb-1 `}>
+                        <div className="flex items-center gap-2 ml-2 mb-1">
                           <input
                             type="radio"
                             value={"false"}
@@ -1387,6 +1121,70 @@ const Forms = (props) => {
                           <div className="text-center">{t("no")}</div>
                         </div>
                       </div>
+                    </div>
+                    <div className="text-xs mt-3">
+                      <label
+                        className={
+                          "block"
+                        }
+                      >
+                        {t("notify-on-signatures")}
+                        <a data-tooltip-id="nos-tooltip" className="ml-1">
+                          <sup>
+                            <i className="fa-light fa-question rounded-full border-[#33bbff] text-[#33bbff] text-[13px] border-[1px] py-[1.5px] px-[4px]"></i>
+                          </sup>
+                        </a>
+                        <Tooltip id="nos-tooltip" className="z-[999]">
+                          <div className="max-w-[200px] md:max-w-[450px] text-[11px]">
+                            <p className="font-bold">
+                              {t("notify-on-signatures")}
+                            </p>
+                            <p>{t("notify-on-signatures-help.p1")}</p>
+                            <p>{t("notify-on-signatures-help.note")}</p>
+                          </div>
+                        </Tooltip>
+                      </label>
+                      <div className="flex flex-col md:flex-row md:gap-4">
+                        <div
+                          className={
+                            "flex items-center gap-2 ml-2 mb-1"
+                          }
+                        >
+                          <input
+                            className="mr-[2px] op-radio op-radio-xs"
+                            type="radio"
+                            onChange={() => handleNotifySignChange(true)}
+                            checked={formData.NotifyOnSignatures === true}
+                          />
+                          <div className="text-center">{t("yes")}</div>
+                        </div>
+                        <div
+                          className={
+                            "flex items-center gap-2 ml-2 mb-1"
+                          }
+                        >
+                          <input
+                            className="mr-[2px] op-radio op-radio-xs"
+                            type="radio"
+                            onChange={() => handleNotifySignChange(false)}
+                            checked={formData.NotifyOnSignatures === false}
+                          />
+                          <div className="text-center">{t("no")}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-xs mt-2">
+                      <label className="block">{t("redirect-url")}</label>
+                      <input
+                        name="RedirectUrl"
+                        className="op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content w-full text-xs"
+                        value={formData.RedirectUrl}
+                        onChange={(e) => handleStrInput(e)}
+                        onInvalid={(e) =>
+                          e.target.setCustomValidity(t("input-required"))
+                        }
+                        onInput={(e) => e.target.setCustomValidity("")}
+                      />
                     </div>
                   </div>
                 )}
@@ -1410,14 +1208,13 @@ const Forms = (props) => {
                 </span>
               )
             )}
-
             <div className="flex items-center mt-3 gap-2">
               <button
                 className={`${
-                  isSubmit ? "cursor-progress" : ""
+                  isSubmit || !fileupload ? "cursor-progress" : ""
                 } op-btn op-btn-primary`}
                 type="submit"
-                disabled={isSubmit}
+                disabled={isSubmit || !fileupload}
               >
                 {t("next")}
               </button>

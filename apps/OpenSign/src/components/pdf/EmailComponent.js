@@ -15,7 +15,6 @@ function EmailComponent({
   sender,
   setIsAlert,
   extUserId,
-  activeMailAdapter,
   setIsDownloadModal
 }) {
   const { t } = useTranslation();
@@ -31,14 +30,14 @@ function EmailComponent({
     setIsLoading(true);
     let sendMail;
     const docId = pdfDetails?.[0]?.objectId || "";
-    const FileAdapterId = pdfDetails?.[0]?.FileAdapterId
-      ? pdfDetails?.[0]?.FileAdapterId
-      : "";
     let presignedUrl = pdfUrl;
     try {
       const axiosRes = await axios.post(
         `${localStorage.getItem("baseUrl")}/functions/getsignedurl`,
-        { url: pdfUrl, docId: docId, fileAdapterId: FileAdapterId },
+        {
+          url: pdfUrl,
+          docId: docId,
+        },
         {
           headers: {
             "content-type": "Application/json",
@@ -66,13 +65,16 @@ function EmailComponent({
         const openSignUrl = "https://www.excis.com";
         const themeBGcolor = themeColor;
         let params = {
-          mailProvider: activeMailAdapter,
           extUserId: extUserId,
           pdfName: pdfName,
           url: presignedUrl,
           recipient: emailList[i],
           subject: `${sender.name} has signed the doc - ${pdfName}`,
-          from: sender.email,
+          replyto:
+            pdfDetails?.[0]?.ExtUserPtr?.Email ||
+            "",
+          from:
+            sender.email,
           html:
             "<html><head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8' /></head><body>  <div style='background-color:#f5f5f5;padding:20px'>    <div style='box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 12px;background-color:white;'> <div><img src=" +
             imgPng +
@@ -80,9 +82,9 @@ function EmailComponent({
             themeBGcolor +
             ";'>    <p style='font-size:20px;font-weight:400;color:white;padding-left:20px',>  Document Copy</p></div><div><p style='padding:20px;font-family:system-ui;font-size:14px'>A copy of the document <strong>" +
             pdfName +
-            " </strong>is attached to this email. Kindly download the document from the attachment.</p></div> </div><div><p>This is an automated email from Excis™. For any queries regarding this email, please contact the sender " +
+            " </strong>is attached to this email. Kindly download the document from the attachment.</p></div> </div><div><p>This is an automated email from Excis. For any queries regarding this email, please contact the sender " +
             sender.email +
-            " directly. If you think this email is inappropriate or spam, you may file a complaint with Excis™  <a href= " +
+            " directly. If you think this email is inappropriate or spam, you may file a complaint with Excis  <a href= " +
             openSignUrl +
             " target=_blank>here</a> </p></div></div></body></html>"
         };
@@ -183,7 +185,7 @@ function EmailComponent({
               {!isAndroid && (
                 <button
                   onClick={(e) =>
-                    handleToPrint(e, pdfUrl, setIsDownloading, pdfDetails)
+                    handleToPrint(e, setIsDownloading, pdfDetails)
                   }
                   className="op-btn op-btn-neutral op-btn-sm text-[15px]"
                 >
