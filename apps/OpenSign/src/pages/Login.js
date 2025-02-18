@@ -48,8 +48,10 @@ function Login() {
     Destination: ""
   });
   const [isModal, setIsModal] = useState(false);
+  const [mfaModal, setMfaModal] = useState(false);
   const [image, setImage] = useState();
   const [errMsg, setErrMsg] = useState();
+  const [otp, setOtp] = useState('');
   useEffect(() => {
     checkUserExt();
     // eslint-disable-next-line
@@ -97,109 +99,11 @@ function Login() {
           // Pass the username and password to logIn function
           const user = await Parse.User.logIn(email, password);
           if (user) {
-            let _user = user.toJSON();
-            localStorage.setItem("UserInformation", JSON.stringify(_user));
-            localStorage.setItem("userEmail", email);
-            localStorage.setItem("accesstoken", _user.sessionToken);
-            localStorage.setItem("scriptId", true);
-            if (_user.ProfilePic) {
-              localStorage.setItem("profileImg", _user.ProfilePic);
-            } else {
-              localStorage.setItem("profileImg", "");
-            }
-            // Check extended class user role and tenentId
-            try {
-              const userSettings = appInfo.settings;
-              await Parse.Cloud.run("getUserDetails")
-                .then(async (extUser) => {
-                  if (extUser) {
-                    // console.log("extUser", extUser, extUser?.get("IsDisabled"));
-                    const IsDisabled = extUser?.get("IsDisabled") || false;
-                    if (!IsDisabled) {
-                      const userRole = extUser?.get("UserRole");
-                      const menu =
-                        userRole &&
-                        userSettings.find((menu) => menu.role === userRole);
-                      if (menu) {
-                        const _currentRole = userRole;
-                        const redirectUrl =
-                          location?.state?.from ||
-                          `/${menu.pageType}/${menu.pageId}`;
-                        let _role = _currentRole.replace("contracts_", "");
-                        localStorage.setItem("_user_role", _role);
-                        const checkLanguage = extUser?.get("Language");
-                        if (checkLanguage) {
-                          checkLanguage && i18n.changeLanguage(checkLanguage);
-                        }
-
-                        const results = [extUser];
-                        const extUser_str = JSON.stringify(results);
-
-                        localStorage.setItem("Extand_Class", extUser_str);
-                        const extInfo = JSON.parse(JSON.stringify(extUser));
-                        localStorage.setItem("userEmail", extInfo.Email);
-                        localStorage.setItem("username", extInfo.Name);
-                        if (extInfo?.TenantId) {
-                          const tenant = {
-                            Id: extInfo?.TenantId?.objectId || "",
-                            Name: extInfo?.TenantId?.TenantName || ""
-                          };
-                          localStorage.setItem("TenantId", tenant?.Id);
-                          dispatch(showTenant(tenant?.Name));
-                          localStorage.setItem("TenantName", tenant?.Name);
-                        }
-                        localStorage.setItem("PageLanding", menu.pageId);
-                        localStorage.setItem("defaultmenuid", menu.menuId);
-                        localStorage.setItem("pageType", menu.pageType);
-                          setState({ ...state, loading: false });
-                          // Redirect to the appropriate URL after successful login
-                          navigate(redirectUrl);
-                      } else {
-                        setState({ ...state, loading: false });
-                        setIsModal(true);
-                      }
-                    } else {
-                      setState({
-                        ...state,
-                        loading: false,
-                        alertType: "danger",
-                        alertMsg:
-                          "You don't have access, please contact the admin."
-                      });
-                      logOutUser();
-                    }
-                  } else {
-                      setState({ ...state, loading: false });
-                      setState({
-                        ...state,
-                        loading: false,
-                        alertType: "danger",
-                        alertMsg: "User not found."
-                      });
-                      logOutUser();
-                  }
-                })
-                .catch((error) => {
-                  setState({
-                    ...state,
-                    loading: false,
-                    alertType: "danger",
-                    alertMsg: `Something went wrong.`
-                  });
-                  setTimeout(() => setState({ ...state, alertMsg: "" }), 2000);
-                  console.error("Error while fetching Follow", error);
-                });
-            } catch (error) {
-              setState({
-                ...state,
-                loading: false,
-                alertType: "danger",
-                alertMsg: `${error.message}`
-              });
-              console.log(error);
-              setTimeout(() => setState({ ...state, alertMsg: "" }), 2000);
-            }
+            await Parse.Cloud.run('generateAndSendOTP', { email });
+            setMfaModal(true)
           }
+
+          setState({ ...state, loading: false });
         } catch (error) {
           setState({
             ...state,
@@ -217,6 +121,149 @@ function Login() {
       }
     }
   };
+
+  const handleOTPSubmit = async () => {
+    if (!otp || otp.length !== 6 || isNaN(otp)) {
+      return showAlert("danger", "Please enter a valid 6-digit OTP.");
+    }
+
+    try {
+      setState({ ...state, loading: true });
+
+      const result = await Parse.Cloud.run('AuthLoginWithMFA', {
+        email: state.email,
+        otp
+      });
+
+      if (result.error) throw new Error(result.error);
+
+      if (result.message === 'OTP expired or not found') {
+        return showAlert("danger", "OTP expired. Please try again.");
+      }
+      // Check for invalid OTP
+      if (result.message === 'Invalid OTP') {
+        return showAlert("danger", "Invalid OTP. Please try again.");
+      }
+
+      // Handle successful login
+      const user = await Parse.User.become(result.sessionToken);
+      const _user = user.toJSON();
+
+      // Securely store user information
+      saveUserData(_user);
+
+      // Fetch user-specific details
+      await fetchUserDetails(_user);
+
+    } catch (error) {
+      handleError(error);
+    }
+  };
+
+  // Helper function to show alerts
+  const showAlert = (type, message) => {
+    setState({
+      ...state,
+      loading: false,
+      alertType: type,
+      alertMsg: message
+    });
+    setTimeout(() => setState((prev) => ({ ...prev, alertMsg: "" })), 2000);
+  };
+
+  // Helper function to save user data securely
+  const saveUserData = (_user) => {
+    localStorage.setItem("UserInformation", JSON.stringify(_user));
+    localStorage.setItem("userEmail", state.email);
+    localStorage.setItem("accesstoken", _user.sessionToken);
+    localStorage.setItem("scriptId", true);
+
+    // Only store profile image if it's available
+    const profileImg = _user.ProfilePic || "";
+    localStorage.setItem("profileImg", profileImg);
+  };
+
+  // Fetch user-specific details
+  const fetchUserDetails = async () => {
+    try {
+      const userSettings = appInfo.settings;
+      const extUser = await Parse.Cloud.run("getUserDetails");
+
+      if (!extUser) {
+        throw new Error("User not found.");
+      }
+
+      const IsDisabled = extUser?.get("IsDisabled") || false;
+      if (IsDisabled) {
+        return handleError("You don't have access, please contact the admin.");
+      }
+
+      const userRole = extUser?.get("UserRole");
+      const menu = userRole && userSettings.find((m) => m.role === userRole);
+
+      if (menu) {
+        handleRoleBasedRedirect(extUser, menu);
+      } else {
+        setState({ ...state, loading: false });
+        setIsModal(true);
+      }
+    } catch (error) {
+      handleError(error);
+    }
+  };
+
+  // Handle role-based redirect and settings update
+  const handleRoleBasedRedirect = (extUser, menu) => {
+    const _currentRole = extUser.get("UserRole").replace("contracts_", "");
+    const redirectUrl = location?.state?.from || `/${menu.pageType}/${menu.pageId}`;
+
+    localStorage.setItem("_user_role", _currentRole);
+    const userLanguage = extUser?.get("Language");
+    if (userLanguage) i18n.changeLanguage(userLanguage);
+
+    saveExtendedUserData(extUser);
+
+    localStorage.setItem("PageLanding", menu.pageId);
+    localStorage.setItem("defaultmenuid", menu.menuId);
+    localStorage.setItem("pageType", menu.pageType);
+
+    setState({ ...state, loading: false });
+    navigate(redirectUrl);
+  };
+
+  // Save extended user data (e.g., tenant information)
+  const saveExtendedUserData = (extUser) => {
+    const results = [extUser];
+    const extUser_str = JSON.stringify(results);
+    localStorage.setItem("Extand_Class", extUser_str);
+
+    const extInfo = JSON.parse(extUser_str)[0];
+    localStorage.setItem("userEmail", extInfo.Email);
+    localStorage.setItem("username", extInfo.Name);
+
+    if (extInfo?.TenantId) {
+      const tenant = {
+        Id: extInfo?.TenantId?.objectId || "",
+        Name: extInfo?.TenantId?.TenantName || ""
+      };
+      localStorage.setItem("TenantId", tenant?.Id);
+      dispatch(showTenant(tenant?.Name));
+      localStorage.setItem("TenantName", tenant?.Name);
+    }
+  };
+
+  // General error handler function
+  const handleError = (error) => {
+    setState({
+      ...state,
+      loading: false,
+      alertType: "danger",
+      alertMsg: error.message || "Something went wrong."
+    });
+    setTimeout(() => setState({ ...state, alertMsg: "" }), 2000);
+    console.error("Error:", error);
+  };
+
 
   const setThirdpartyLoader = (value) => {
     setState({ ...state, thirdpartyLoader: value });
@@ -280,7 +327,7 @@ function Login() {
                   localStorage.setItem("PageLanding", menu.pageId);
                   localStorage.setItem("defaultmenuid", menu.menuId);
                   localStorage.setItem("pageType", menu.pageType);
-                    navigate(redirectUrl);
+                  navigate(redirectUrl);
                 } else {
                   setState({
                     ...state,
@@ -378,8 +425,8 @@ function Login() {
               localStorage.setItem("PageLanding", menu.pageId);
               localStorage.setItem("defaultmenuid", menu.menuId);
               localStorage.setItem("pageType", menu.pageType);
-                // Redirect to the appropriate URL after successful login
-                navigate(redirectUrl);
+              // Redirect to the appropriate URL after successful login
+              navigate(redirectUrl);
             } else {
               setState({ ...state, loading: false });
               logOutUser();
@@ -476,6 +523,7 @@ function Login() {
 
   const logOutUser = async () => {
     setIsModal(false);
+    setMfaModal(false);
     try {
       await Parse.User.logOut();
     } catch (err) {
@@ -559,39 +607,39 @@ function Login() {
                           onInput={(e) => e.target.setCustomValidity("")}
                         />
                         <hr className="my-1 border-none" />
-                            <label className="block text-xs" htmlFor="password">
-                              {t("password")}
-                            </label>
-                            <div className="relative">
-                              <input
-                                id="password"
-                                type={
-                                  state.passwordVisible ? "text" : "password"
-                                }
-                                className="op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content w-full text-xs"
-                                name="password"
-                                value={state.password}
-                                autoComplete="current-password"
-                                onChange={handleChange}
-                                onInvalid={(e) =>
-                                  e.target.setCustomValidity(
-                                    t("input-required")
-                                  )
-                                }
-                                onInput={(e) => e.target.setCustomValidity("")}
-                                required
-                              />
-                              <span
-                                className="absolute cursor-pointer top-[50%] right-[10px] -translate-y-[50%] text-base-content"
-                                onClick={togglePasswordVisibility}
-                              >
-                                {state.passwordVisible ? (
-                                  <i className="fa-light fa-eye-slash text-xs pb-1" /> // Close eye icon
-                                ) : (
-                                  <i className="fa-light fa-eye text-xs pb-1 " /> // Open eye icon
-                                )}
-                              </span>
-                            </div>
+                        <label className="block text-xs" htmlFor="password">
+                          {t("password")}
+                        </label>
+                        <div className="relative">
+                          <input
+                            id="password"
+                            type={
+                              state.passwordVisible ? "text" : "password"
+                            }
+                            className="op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content w-full text-xs"
+                            name="password"
+                            value={state.password}
+                            autoComplete="current-password"
+                            onChange={handleChange}
+                            onInvalid={(e) =>
+                              e.target.setCustomValidity(
+                                t("input-required")
+                              )
+                            }
+                            onInput={(e) => e.target.setCustomValidity("")}
+                            required
+                          />
+                          <span
+                            className="absolute cursor-pointer top-[50%] right-[10px] -translate-y-[50%] text-base-content"
+                            onClick={togglePasswordVisibility}
+                          >
+                            {state.passwordVisible ? (
+                              <i className="fa-light fa-eye-slash text-xs pb-1" /> // Close eye icon
+                            ) : (
+                              <i className="fa-light fa-eye text-xs pb-1 " /> // Open eye icon
+                            )}
+                          </span>
+                        </div>
 
                         <div className="relative mt-1">
                           <NavLink
@@ -632,6 +680,49 @@ function Login() {
               <Alert type={state.alertType}>{state.alertMsg}</Alert>
             )}
           </div>
+          <ModalUi
+            isOpen={mfaModal}
+            title={t("OTP Verification")}
+            showClose={false}
+          >
+            <form className="px-4 py-3 text-base-content">
+              <div className="mb-3">
+                <label
+                  htmlFor="OTP"
+                  style={{ display: "flex" }}
+                  className="block text-xs text-gray-700 font-semibold"
+                >
+                  {t("Enter OTP")}
+                  <span className="text-[red] text-[13px]">*</span>
+                </label>
+                <input
+                  type="text"
+                  className="op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content w-full text-xs"
+                  id="OTP"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  maxLength="6"
+                  required
+                />
+              </div>
+              <div className="mt-4 gap-2 flex flex-row">
+                <button
+                  type="button"
+                  className="op-btn op-btn-primary"
+                  onClick={handleOTPSubmit}
+                >
+                  {t("Verify OTP")}
+                </button>
+                <button
+                  type="button"
+                  className="op-btn op-btn-ghost"
+                  onClick={logOutUser}
+                >
+                  {t("Cancel")}
+                </button>
+              </div>
+            </form>
+          </ModalUi>
           <ModalUi
             isOpen={isModal}
             title={t("additional-info")}
