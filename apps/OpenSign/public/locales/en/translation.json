@@ -1,4 +1,8 @@
 {
+  "are-you-sure-delete-user": "Are you sure you want to permanently delete user",
+  "user-deleted-success": "User deleted successfully",
+  "delete-user-error": "Failed to delete user. Please try again.",
+  "cannot-delete-admin": "Admin users cannot be deleted",
   "header-news": "New feature: Teams plan users can now integrate their own AWS S3 buckets for file storage",
   "header-news-btn": "Setup now",
   "create-account": "Create account",
@@ -162,7 +166,8 @@
     "created-date": "Created date",
     "Type": "Type",
     "Logs": "Logs",
-    "Expiry-date": "Expiry date"
+    "Expiry-date": "Expiry date",
+    "Delete": "Delete"
   },
   "report-help": {
     "Draft Documents": "These are documents you have started but have not finalized for sending.",
