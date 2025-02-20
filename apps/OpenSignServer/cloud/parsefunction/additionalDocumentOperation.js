@@ -23,13 +23,13 @@ async function removeDocument(additionalDocumentId) {
     // get all records from additioanl document table
     let additionalDocumentQuery = new Parse.Query("Additional_Document");
     //  filter the record according to input 
-    additionalDocumentQuery = additionalDocumentQuery.equalTo('objectId', additionalDocumentId.params.documentId);
+    additionalDocumentQuery = additionalDocumentQuery.equalTo('objectId', additionalDocumentId.params.additionalDocumentId);
     try {
         // Find the document to delete
         const documentToDelete = await additionalDocumentQuery.first({ useMasterKey: true });
         //---console.log(documentToDelete);
         if (documentToDelete) {
-            console.log('Document found:', documentToDelete);
+            //--console.log('Document found:', documentToDelete);
             // Delete the document
             await documentToDelete.destroy({ useMasterKey: true });
             console.log('Document deleted successfully');
@@ -54,8 +54,11 @@ async function getAdditionalDocumentByDocumentId(documentId) {
             const FileName = doc.get('FileName');
             const FileUrl = doc.get('FileUrl'); 
             const OriginalFileName = doc.get('OriginalFileName');
-            return { FileName, FileUrl,OriginalFileName }; 
+            const additionalDocId = doc.id;
+            return { FileName, FileUrl,OriginalFileName,additionalDocId}; 
         });
+        //---console.log(documentData);
+
         return documentData;
     } catch (error) {
         console.error('Error fetching documents:', error);
