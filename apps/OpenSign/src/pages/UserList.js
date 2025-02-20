@@ -30,6 +30,7 @@ const UserList = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [formHeader, setFormHeader] = useState(t("add-user"));
   const [isDeleteModal, setIsDeleteModal] = useState({});
+  const [loggedInUserId, setLoggedInUserId] = useState(null);
   const recordperPage = 10;
   const startIndex = (currentPage - 1) * recordperPage; // user per page
 
@@ -107,12 +108,13 @@ const UserList = () => {
             ? true
             : false;
         setIsAdmin(admin);
+        setLoggedInUserId(extUser?.objectId);
       }
       const res = await Parse.Cloud.run("getuserlistbyorg", {
         organizationId: extUser.OrganizationId.objectId
       });
       const _userRes = JSON.parse(JSON.stringify(res));
-      setUserList(_userRes);
+      setUserList(_userRes.filter(user => !user.IsDeleted));
     } catch (err) {
       console.log("Err in fetch userlist", err);
       setIsAlert({ type: "danger", msg: t("something-went-wrong-mssg") });
@@ -334,7 +336,7 @@ const UserList = () => {
                                   )}
                                 </td>
                               )}
-                              {isAdmin && item.UserRole !== "contracts_Admin" && (
+                              {isAdmin && item.UserRole !== "contracts_Admin" && item.objectId !== loggedInUserId && (
                                 <td className="px-4 py-2">
                                   <button
                                     onClick={() => handleDeleteClick(item)}

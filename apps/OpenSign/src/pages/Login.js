@@ -115,7 +115,8 @@ function Login() {
                   if (extUser) {
                     // console.log("extUser", extUser, extUser?.get("IsDisabled"));
                     const IsDisabled = extUser?.get("IsDisabled") || false;
-                    if (!IsDisabled) {
+                    const IsDeleted = extUser?.get("IsDeleted") || false;
+                    if (!IsDisabled && !IsDeleted) {
                       const userRole = extUser?.get("UserRole");
                       const menu =
                         userRole &&
@@ -251,7 +252,8 @@ function Login() {
           .then(async (extUser) => {
             if (extUser) {
               const IsDisabled = extUser?.get("IsDisabled") || false;
-              if (!IsDisabled) {
+              const IsDeleted = extUser?.get("IsDeleted") || false;
+              if (!IsDisabled && IsDeleted) {
                 const userRole = extUser?.get("UserRole");
                 const menu =
                   userRole &&
@@ -350,7 +352,8 @@ function Login() {
       await Parse.Cloud.run("getUserDetails").then(async (extUser) => {
         if (extUser) {
           const IsDisabled = extUser?.get("IsDisabled") || false;
-          if (!IsDisabled) {
+          const IsDeleted = extUser?.get("IsDeleted") || false;
+          if (!IsDisabled && IsDeleted) {
             const userRole = extUser.get("UserRole");
             const _currentRole = userRole;
             const menu =
