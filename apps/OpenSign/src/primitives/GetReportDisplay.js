@@ -84,6 +84,102 @@ const ReportTable = (props) => {
   const startIndex = (currentPage - 1) * props.docPerPage;
   const { isMoreDocs, setIsNextRecord } = props;
 
+  //---Upload additional document states started-----
+  const [isUploadedAdditionalDocModal, setisUploadedAdditionalDocModal] = useState(false);
+  const [uploadedDocumentsAdditional, setuploadedDocumentsAdditional] = useState([]);
+  const [loadingUploadedDocAdditional, setUploadedLoadingDocAdditional] = useState(true);
+  const [errorUploadedDocAdditional, setUploadedErrorDocAdditional] = useState(null);
+
+  
+  // Function to fetch documents
+  const fetchUploadedDocuments = async (documentIdUploadedAddDoc) => {
+    try {
+      setisUploadedAdditionalDocModal(true);
+      setuploadedDocumentsAdditional([]);
+      const result = await getAdditionalDocumentByDocumentId(documentIdUploadedAddDoc);
+      //console.log("ree", result);
+      setuploadedDocumentsAdditional(result);
+      setUploadedLoadingDocAdditional(false);
+    } catch (err) {
+      setUploadedErrorDocAdditional('Error fetching documents');
+      setUploadedLoadingDocAdditional(false);
+    }
+  };
+
+  const getAdditionalDocumentByDocumentId = async (documentIdUploadedAddDoc) => {
+    try {
+      const documents = await Parse.Cloud.run('getAdditionalDocumentByDocumentId', { documentId: documentIdUploadedAddDoc });
+      console.log('Document fetched successfully');
+      return documents;
+    } catch (error) {
+      console.error('Error fetching document:', error);
+    }
+  };
+
+  const handleUploadedAdditionalDocClosePopup = () => {
+    setisUploadedAdditionalDocModal(false);
+  };
+
+  const handleDownloadAdditionalDocument = async (item) => {
+    const url = item?.DocSignedUrl || item?.FileUrl || "";
+    const pdfName = item?.Name?.length > 100
+      ? item?.OriginalFileName?.slice(0, 100)
+      : item?.OriginalFileName || "Document";
+  
+    const templateId = props?.ReportName === "Templates" && item.objectId;
+    const docId = item.objectId;
+  
+    if (url) {
+      try {
+        const signedUrl = await getSignedUrl(
+          url,
+          docId,
+          templateId
+        );
+  
+        // Create an anchor element to open the file in a new tab
+        const link = document.createElement('a');
+        link.href = signedUrl; // Use the signed URL
+        link.target = '_blank'; // Open in a new tab
+        link.download = pdfName; // Optionally set the filename for downloading
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link); // Clean up after opening the link
+  
+      } catch (err) {
+        console.log("err in getsignedurl", err);
+        alert(t("something-went-wrong-mssg"));
+      }
+    }
+  };
+  
+
+  const handleViewDownloadAdditionalDocument = async (item) => {
+    const url = item?.DocSignedUrl || item?.FileUrl || "";
+    const pdfName = item?.Name?.length > 100
+      ? item?.OriginalFileName?.slice(0, 100)
+      : item?.OriginalFileName || "Document";
+
+    const templateId = props?.ReportName === "Templates" && item.objectId;
+    const docId = item.objectId;
+    if (url) {
+      try {
+
+        const signedUrl = await getSignedUrl(
+          url,
+          docId,
+          templateId
+        );
+        await fetchUrl(signedUrl, pdfName);
+
+      } catch (err) {
+        console.log("err in getsignedurl", err);
+        alert(t("something-went-wrong-mssg"));
+      }
+    }
+  };
+  //---Upload additional document states ended-----
+
   const getPaginationRange = () => {
     const totalPageNumbers = 7; // Adjust this value to show more/less page numbers
     const pages = [];
@@ -1703,7 +1799,17 @@ const ReportTable = (props) => {
                             )}
                           </td>
                         )}
-                        <td className="px-2 py-2">
+                          <td>
+                            <div className="text-base-content min-w-max flex flex-row gap-x-2 gap-y-1 justify-start items-center ddeee">
+                              <div role="button" title="Additional Document" className="op-btn-primary op-btn op-btn-sm">
+                                <a className="btn btn-link btn-sm" onClick={() => fetchUploadedDocuments(item?.objectId)}>
+                                  <i className="fa fa-eye" style={{ color: '#fff' }}></i>
+                                  <span className="ml-1 font-medium">Additional Document</span>
+                                </a>
+                              </div>
+                            </div>
+                          </td>                          
+                        <td className="px-2 py-2">                          
                           <div className="text-base-content min-w-max flex flex-row gap-x-2 gap-y-1 justify-start items-center">
                             {props.actions?.length > 0 &&
                               props.actions.map((act, index) =>
@@ -2344,6 +2450,62 @@ const ReportTable = (props) => {
             />
           </ModalUi>
         )}
+
+        <ModalUi
+          isOpen={isUploadedAdditionalDocModal}
+          title="Additional Document(s)"
+          handleClose={() => handleUploadedAdditionalDocClosePopup()}
+        >
+          <div className="pl-1 mt-3">
+            <div>
+              <div className="container">
+                {uploadedDocumentsAdditional && uploadedDocumentsAdditional?.length > 0 ? (
+                  <div>
+                    {loadingUploadedDocAdditional ? (
+                      <div>{t('loading')}</div> // Example for translation
+                    ) : errorUploadedDocAdditional ? (
+                      <div>{errorUploadedDocAdditional}</div>
+                    ) : (
+                      <table className={`table table-bordered shadow-sm rounded table-sm mr-3 
+                                      ${uploadedDocumentsAdditional.some(doc => doc.OriginalFileName.length > 50) ? 'table-responsive' : ''}`}>
+                        <thead className="thead-light">
+                          <tr>
+                            <th>Document Name</th>
+                            <th className="text-center">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {uploadedDocumentsAdditional?.map((doc, index) => (
+                            <tr key={index}>
+                              <td
+                                className={doc.OriginalFileName.length > 50 ? 'text-truncate' : ''}
+                                style={doc.OriginalFileName.length > 50 ? { maxWidth: '200px' } : {}}
+                                data-bs-toggle="tooltip"
+                                title={doc.OriginalFileName}  // Tooltip with the full document name
+                              >
+                                {doc.OriginalFileName}
+                              </td>
+                              <td className="text-center">
+                                <a onClick={() => handleDownloadAdditionalDocument(doc)} className="btn btn-link btn-sm">
+                                  <i className="fa fa-eye" style={{ color: '#002864' }}></i>
+                                </a>
+                                <a onClick={() => handleViewDownloadAdditionalDocument(doc)} className="btn btn-link btn-sm">
+                                  <i className="fa fa-download" style={{ color: '#002864' }}></i>
+                                </a>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-muted mb-5 text-center">No Additional Document Uploaded</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </ModalUi>
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ async function saveAdditionalDocument(additionalDocumentData) {
         additionalDocument.set('OriginalFileName', additionalDocumentData.params.originalFileName);
         additionalDocument.set('FileName', additionalDocumentData.params.fileName);
         additionalDocument.set('FileUrl', additionalDocumentData.params.fileUrl);
+        additionalDocument.set('DocSignedUrl', additionalDocumentData.params.docSignedUrl);
         //---save data in database
         await additionalDocument.save(null, { useMasterKey: true });
         console.log('Document Saved');
@@ -55,7 +56,8 @@ async function getAdditionalDocumentByDocumentId(documentId) {
             const FileUrl = doc.get('FileUrl'); 
             const OriginalFileName = doc.get('OriginalFileName');
             const additionalDocId = doc.id;
-            return { FileName, FileUrl,OriginalFileName,additionalDocId}; 
+            const DocSignedUrl=doc.get('DocSignedUrl');
+            return { FileName, FileUrl,OriginalFileName,additionalDocId,DocSignedUrl}; 
         });
         //---console.log(documentData);
 

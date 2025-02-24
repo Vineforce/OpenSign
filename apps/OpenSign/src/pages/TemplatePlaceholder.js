@@ -1039,14 +1039,15 @@ const TemplatePlaceholder = () => {
   };
 
 
-  const saveAdditionalDocument = async (userId, documentId, fileName, fileUrl, originalFileName) => {
+  const saveAdditionalDocument = async (userId, documentId, fileName, fileUrl, originalFileName, docSignedUrl) => {
     try {
       await Parse.Cloud.run("saveAdditionalDocument", {
         userId: userId,
         documentId: documentId,
         fileName: fileName,
         fileUrl: fileUrl,
-        originalFileName: originalFileName
+        originalFileName: originalFileName,
+        docSignedUrl:docSignedUrl
       });
       //console.log('Document saved successfully');
       //--- Now we use UseEffectconst additionalDocumentArray= getAdditionalDocumentByDocumentId();
@@ -1168,7 +1169,8 @@ const TemplatePlaceholder = () => {
                     // save the file to database
                     const currentUser = Parse.User.current();
 
-                    saveAdditionalDocument(currentUser.id, documentIdCreated, response._name, response._url, files?.[0]?.name);
+                    saveAdditionalDocument(currentUser.id, documentIdCreated, response._name, response._url, files?.[0]?.name,fileRes.url);
+                    e.target.value = "";
                     return fileRes.url;
                   } else {
                     removeFileAD(e);
@@ -1219,7 +1221,7 @@ const TemplatePlaceholder = () => {
                     "application/pdf"
                   );
 
-                  const daat = await parseFile.save({
+                    await parseFile.save({
                     progress: (progressValue, loaded, total, { type }) => {
                       if (type === "upload" && progressValue !== null) {
                         const percentCompleted = Math.round(
@@ -1229,8 +1231,6 @@ const TemplatePlaceholder = () => {
                       }
                     }
                   });
-                  
-                  alert(1);
                   // Retrieve the URL of the uploaded file
                   if (parseFile.url()) {
                     const fileRes = await getSecureUrl(parseFile.url());
@@ -1316,6 +1316,7 @@ const TemplatePlaceholder = () => {
                 // You can access the URL of the uploaded file using response.url()
                 if (response.url()) {
                   const fileRes = await getSecureUrl(response.url());
+                  console.log(fileRes);
                   if (fileRes.url) {
                     setFileUploadAD(fileRes.url);
                     setfileloadAD(false);
@@ -1325,7 +1326,8 @@ const TemplatePlaceholder = () => {
                     SaveFileSize(size, fileRes.url, tenantId);
                     // save the file to database
                     const currentUser = Parse.User.current();
-                    saveAdditionalDocument(currentUser.id, documentIdCreated, response._name, response._url, files?.[0]?.name);
+                    saveAdditionalDocument(currentUser.id, documentIdCreated, response._name, response._url, files?.[0]?.name,fileRes.url);
+                    e.target.value = "";
                     return fileRes.url;
                   } else {
                     removeFileAD(e);
@@ -1950,7 +1952,7 @@ const TemplatePlaceholder = () => {
                                                     {doc.OriginalFileName}
                                                   </td>
                                                   <td className="text-center">
-                                                    <a href={doc.FileUrl} target="_blank" rel="noopener noreferrer" className="btn btn-link btn-sm">                                                  
+                                                    <a href={doc.DocSignedUrl} target="_blank" rel="noopener noreferrer" className="btn btn-link btn-sm">                                                  
                                                       <i className="fa fa-eye" style={{ color: '#002864' }}></i>
                                                     </a>
                                                     <a className="btn btn-link btn-sm" onClick={() => deleteAdditionalDoc(doc.additionalDocId)}>
