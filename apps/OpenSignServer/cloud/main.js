@@ -51,6 +51,8 @@ import generateCertificatebydocId from './parsefunction/generateCertificatebydoc
 import fileUpload from './parsefunction/fileUpload.js';
 import getUserListByOrg from './parsefunction/getUserListByOrg.js';
 import editContact from './parsefunction/editContact.js';
+import deleteUser from './parsefunction/deleteUser.js';
+
 import additionalDocumentOperation from './parsefunction/additionalDocumentOperation.js';
 const {saveAdditionalDocument,removeDocument,getAdditionalDocumentByDocumentId}=additionalDocumentOperation;
 
@@ -113,6 +115,11 @@ Parse.Cloud.define('generatecertificate', generateCertificatebydocId);
 Parse.Cloud.define('fileupload', fileUpload);
 Parse.Cloud.define('getuserlistbyorg', getUserListByOrg);
 Parse.Cloud.define('editcontact', editContact);
+Parse.Cloud.define('deleteUser', async (request) => {
+    const { contractsUserId } = request.params;
+    return deleteUser(contractsUserId);
+  });
+
 //These  functions will add/save, get and remove/delete the additional documents
 Parse.Cloud.define('saveAdditionalDocument',saveAdditionalDocument);
 Parse.Cloud.define('removeDocument',removeDocument);
