@@ -1210,10 +1210,14 @@ const TemplatePlaceholder = () => {
     try {
       if (addDocId) {
         setLoadingDocAdditional(true);
-        Parse.Cloud.run('removeDocument', { additionalDocumentId: addDocId });
-        console.log('Document deleted successfully:', addDocId);       
-        //setTriggerFetchDocAdditional(prev => !prev);
-        setTriggerFetchDocAdditional(new Date());
+        //await Parse.Cloud.run('removeDocument', { additionalDocumentId: addDocId });
+        Parse.Cloud.run('removeDocument', { additionalDocumentId: addDocId }).then(
+          ()=>{
+            console.log('Document deleted successfully:', addDocId);       
+            //setTriggerFetchDocAdditional(prev => !prev);
+            setTriggerFetchDocAdditional(new Date());
+          }
+        );
       } else {
         console.log('Error: addDocId is undefined or null');
       }
