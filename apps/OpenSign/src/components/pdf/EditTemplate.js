@@ -13,7 +13,7 @@ const EditTemplate = ({
   onSuccess,
 }) => {
   const appName =
-    "OpenSign™";
+    "Excis";
   const { t } = useTranslation();
   const [formData, setFormData] = useState({
     Name: template?.Name || "",

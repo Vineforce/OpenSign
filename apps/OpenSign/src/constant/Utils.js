@@ -1006,7 +1006,7 @@ export const addInitialData = (signerPos, setXyPosition, value, userId) => {
 //function for embed document id
 export const embedDocId = async (pdfDoc, documentId, allPages) => {
   const appName =
-    "OpenSign™";
+    "Excis";
   // `fontBytes` is used to embed custom font in pdf
   const fontBytes = await fileasbytes(
     "https://cdn.opensignlabs.com/webfonts/times.ttf"
@@ -2063,7 +2063,7 @@ export const getAppLogo = async () => {
         domain: domain
       });
       if (tenant) {
-          localStorage.setItem("appname", "OpenSign™");
+          localStorage.setItem("appname", "Excis");
         return { logo: tenant?.logo, user: tenant?.user };
       }
     } catch (err) {
@@ -2174,7 +2174,7 @@ export const handleSendOTP = async (email) => {
 };
 export const fetchUrl = async (url, pdfName) => {
   const appName =
-    "OpenSign™";
+    "Excis";
   try {
     const response = await fetch(url);
     if (!response.ok) {
@@ -2331,7 +2331,7 @@ export const handleDownloadCertificate = async (
   isZip
 ) => {
   const appName =
-    "OpenSign™";
+    "Excis";
   if (pdfDetails?.length > 0 && pdfDetails[0]?.CertificateUrl) {
     try {
       await fetch(pdfDetails[0] && pdfDetails[0]?.CertificateUrl);
@@ -2950,12 +2950,12 @@ export const flattenPdf = async (pdfFile) => {
 
 export const mailTemplate = (param) => {
   const appName =
-    "OpenSign™";
+    "Excis";
   const logo =
-        `<div style='padding:10px'><img src='https://qikinnovation.ams3.digitaloceanspaces.com/logo.png' height='50' /></div>`;
+        `<div style='padding:10px'><img src='https://www.excis.com/assets/images/main-logo.png' height='50' /></div>`;
 
   const opurl =
-        ` <a href='https://www.opensignlabs.com' target=_blank>here</a>.</p></div></div></body></html>`;
+        ` <a href='https://www.excis.com' target=_blank>here</a>.</p></div></div></body></html>`;
 
   const subject = `${param.senderName} has requested you to sign "${param.title}"`;
   const body =

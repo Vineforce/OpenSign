@@ -25,7 +25,7 @@ import SelectLanguage from "../components/pdf/SelectLanguage";
 
 function Login() {
   const appName =
-    "OpenSign™";
+    "Excis";
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();

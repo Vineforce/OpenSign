@@ -67,7 +67,7 @@ function SignYourSelf() {
   const { t } = useTranslation();
   const { docId } = useParams();
   const appName =
-    "OpenSign™";
+    "Excis";
   const divRef = useRef(null);
   const nodeRef = useRef(null);
   const imageRef = useRef(null);

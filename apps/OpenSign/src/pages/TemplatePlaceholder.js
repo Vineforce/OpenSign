@@ -61,9 +61,6 @@ import TourContentWithBtn from "../primitives/TourContentWithBtn";
 import HandleError from "../primitives/HandleError";
 import LoaderWithMsg from "../primitives/LoaderWithMsg";
 import LinkUserModal from "../primitives/LinkUserModal";
-import { PDFDocument } from "pdf-lib";
-import { SaveFileSize } from "../constant/saveFileSize";
-
 
 const TemplatePlaceholder = () => {
   const { t } = useTranslation();

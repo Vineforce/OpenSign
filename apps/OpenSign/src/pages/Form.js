@@ -37,7 +37,7 @@ function Form() {
 
 const Forms = (props) => {
   const appName =
-    "OpenSign™";
+    "Excis";
   const { t } = useTranslation();
   const maxFileSize = 20;
   const abortController = new AbortController();

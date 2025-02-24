@@ -1766,7 +1766,7 @@ const ReportTable = (props) => {
                         {props.heading.includes("Folder") && (
                           <td className="p-2 text-center">
                             {item?.Folder?.Name ||
-                              t("sidebar.OpenSign™ Drive", {
+                              t("sidebar.Excis Drive", {
                                 appName: drivename
                               })}
                           </td>
