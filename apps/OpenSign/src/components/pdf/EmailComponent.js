@@ -18,6 +18,8 @@ function EmailComponent({
   setIsDownloadModal
 }) {
   const { t } = useTranslation();
+  const appName =
+    "Excis";
   const [emailList, setEmailList] = useState([]);
   const [emailValue, setEmailValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -61,9 +63,13 @@ function EmailComponent({
           "X-Parse-Application-Id": localStorage.getItem("parseAppId"),
           sessionToken: localStorage.getItem("accesstoken")
         };
-        //TODO: Put Contact us link here
         const openSignUrl = "https://www.excis.com";
         const themeBGcolor = themeColor;
+        const logo =
+              `<img src='https://www.excis.com/assets/images/main-logo.png' height='50' style='padding:20px'/>`;
+        const opurl =
+              ` <a href='www.excis.com' target=_blank>here</a>`;
+
         let params = {
           extUserId: extUserId,
           pdfName: pdfName,
@@ -76,17 +82,11 @@ function EmailComponent({
           from:
             sender.email,
           html:
-            "<html><head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8' /></head><body>  <div style='background-color:#f5f5f5;padding:20px'>    <div style='box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 12px;background-color:white;'> <div><img src=" +
-            imgPng +
-            "  height='50' style='padding:20px,width:170px,height:40px'/> </div><div style='padding:2px;font-family:system-ui; background-color:" +
-            themeBGcolor +
-            ";'>    <p style='font-size:20px;font-weight:400;color:white;padding-left:20px',>  Document Copy</p></div><div><p style='padding:20px;font-family:system-ui;font-size:14px'>A copy of the document <strong>" +
-            pdfName +
-            " </strong>is attached to this email. Kindly download the document from the attachment.</p></div> </div><div><p>This is an automated email from Excis. For any queries regarding this email, please contact the sender " +
-            sender.email +
-            " directly. If you think this email is inappropriate or spam, you may file a complaint with Excis  <a href= " +
-            openSignUrl +
-            " target=_blank>here</a> </p></div></div></body></html>"
+            `<html><head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8'/></head><body><div style='background-color:#f5f5f5;padding:20px'><div style='background-color:white'><div>` +
+            `${logo}</div><div style='padding:2px;font-family:system-ui;background-color:${themeColor}'><p style='font-size:20px;font-weight:400;color:white;padding-left:20px'>Document Copy</p></div><div>` +
+            `<p style='padding:20px;font-family:system-ui;font-size:14px'>A copy of the document <strong>${pdfName}</strong> is attached to this email. Kindly download the document from the attachment.</p>` +
+            `</div></div><div><p>This is an automated email from ${appName}. For any queries regarding this email, please contact the sender ${sender.email} directly. ` +
+            `If you think this email is inappropriate or spam, you may file a complaint with ${appName}${opurl}.</p></div></div></body></html>`
         };
         sendMail = await axios.post(url, params, { headers: headers });
       } catch (error) {
