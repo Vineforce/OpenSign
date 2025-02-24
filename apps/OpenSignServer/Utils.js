@@ -359,7 +359,7 @@ export const mailTemplate = param => {
         `<img src='https://excis.com/assets/images/main-logo.png' height='50' />`;
 
   const opurl =
-        ` <a href='www.excis.com' target=_blank> here</a>`;
+        ` <a href='https://www.excis.com' target=_blank> here</a>`;
 
   const body =
     "<html><head><meta http-equiv='Content-Type' content='text/html;charset=UTF-8' /></head><body><div style='background-color:#f5f5f5;padding:20px'><div style='background:white;padding-bottom:20px'><div style='padding:10px'>" +
@@ -380,7 +380,7 @@ export const mailTemplate = param => {
     appName +
     '. For any queries regarding this email, please contact the sender ' +
     param.senderMail +
-    ` directly. If you think this email is inappropriate or spam, you may file a complaint with ${appName}${opurl}.</p></div></div></body></html>`;
+    ` directly. If you think this email is inappropriate or spam, you may file a complaint with ${appName} ${opurl} . </p></div></div></body></html>`;
 
   return { subject, body };
 };

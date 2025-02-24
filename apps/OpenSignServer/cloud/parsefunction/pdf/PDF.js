@@ -108,7 +108,7 @@ async function sendNotifyMail(doc, signUser, mailProvider) {
       const logo =
             `<div><img src='https://www.excis.com/assets/images/main-logo.png' height='50' style='padding:20px' /></div>`;
       const opurl =
-            ` <a href=www.excis.com target=_blank> here</a>`;
+            ` <a href=https://www.excis.com target=_blank> here</a>`;
       const subject = `Document "${pdfName}" has been signed by ${signerName}`;
       const body =
         "<html><head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8'/></head><body><div style='background-color:#f5f5f5;padding:20px'><div style='background-color:white'>" +
@@ -159,14 +159,14 @@ async function sendCompletedMail(obj) {
   const logo =
         `<div><img src='https://www.excis.com/assets/images/main-logo.png' height='50' style='padding:20px'/></div>`;
   const opurl =
-        ` <a href=www.excis.com target=_blank> here</a>.</p></div></div></body></html>`;
+        ` <a href=https://www.excis.com target=_blank> here</a>.</p></div></div></body></html>`;
   let subject = `Document "${pdfName}" has been signed by all parties`;
   let body =
     "<html><head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8' /></head><body><div style='background-color:#f5f5f5;padding:20px'><div style='background-color:white'>" +
     `${logo}<div style='padding:2px;font-family:system-ui;background-color:#47a3ad'><p style='font-size:20px;font-weight:400;color:white;padding-left:20px'>Document signed successfully</p></div><div>` +
     `<p style='padding:20px;font-family:system-ui;font-size:14px'>All parties have successfully signed the document <b>"${pdfName}"</b>. Kindly download the document from the attachment.</p>` +
     `</div></div><div><p>This is an automated email from ${appName}. For any queries regarding this email, please contact the sender ${sender.Email} directly.` +
-    `If you think this email is inappropriate or spam, you may file a complaint with ${appName}${opurl}`;
+    `If you think this email is inappropriate or spam, you may file a complaint with ${appName} ${opurl} `;
 
   if (obj?.isCustomMail) {
     const tenant = sender?.TenantId;

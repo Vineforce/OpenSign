@@ -68,7 +68,7 @@ function EmailComponent({
         const logo =
               `<img src='https://www.excis.com/assets/images/main-logo.png' height='50' style='padding:20px'/>`;
         const opurl =
-              ` <a href='www.excis.com' target=_blank>here</a>`;
+              ` <a href='https://www.excis.com' target=_blank> here</a>`;
 
         let params = {
           extUserId: extUserId,
