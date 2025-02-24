@@ -32,8 +32,11 @@ async function sendMail(document) {
     month: 'long',
     year: 'numeric',
   });
-  const sender = document.ExtUserPtr.Email;
   let signerMail = document.Placeholders;
+  const senderName =
+    document.ExtUserPtr.Name;
+  const senderEmail =
+    document.ExtUserPtr.Email;
 
   if (document.SendinOrder) {
     signerMail = signerMail.slice();
@@ -57,7 +60,6 @@ async function sendMail(document) {
       let signPdf = `${hostUrl}/login/${encodeBase64}`;
       const openSignUrl = 'https://www.excis.com';
       const orgName = document.ExtUserPtr.Company ? document.ExtUserPtr.Company : '';
-      const themeBGcolor = '#47a3ad';
       const senderObj = document?.ExtUserPtr;
       const mailBody = document?.ExtUserPtr?.TenantId?.RequestBody || '';
       const mailSubject = document?.ExtUserPtr?.TenantId?.RequestSubject || '';
@@ -70,10 +72,8 @@ async function sendMail(document) {
           '</body></html>';
         const variables = {
           document_title: document?.Name,
-          sender_name:
-            senderObj?.Name,
-          sender_mail:
-            senderObj?.Email,
+          sender_name: senderName,
+          sender_mail: senderEmail,
           sender_phone: senderObj?.Phone || '',
           receiver_name: existSigner?.Name || '',
           receiver_email: existSigner?.Email || signerMail[i].email,
@@ -84,41 +84,22 @@ async function sendMail(document) {
         };
         replaceVar = replaceMailVaribles(mailSubject, htmlReqBody, variables);
       }
-
+      const mailparam = {
+        senderName: senderName,
+        senderMail: senderEmail,
+        title: document.Name,
+        organization: orgName,
+        localExpireDate: localExpireDate,
+        sigingUrl: signPdf,
+      };
       let params = {
         extUserId: document.ExtUserPtr.objectId,
         recipient: objectId ? existSigner?.Email : signerMail[i].email,
-        subject: replaceVar?.subject
-          ? replaceVar?.subject
-          : `${document.ExtUserPtr.Name} has requested you to sign "${document.Name}"`,
+        subject: replaceVar?.subject ? replaceVar?.subject : mailTemplate(mailparam).subject,
         from:
-          sender,
-        replyto:
-          sender ||
-          '',
-        html: replaceVar?.body
-          ? replaceVar?.body
-          : "<html><head><meta http-equiv='Content-Type' content='text/html;charset=UTF-8' /></head><body><div style='background-color:#f5f5f5;padding:20px;'><div style='box-shadow:rgba(0, 0, 0, 0.1) 0px 4px 12px;background:white;padding-bottom:20px;'><div style='padding:10px 10px 0 10px'><img src=" +
-            imgPng +
-            " height='50' style='padding:20px;width:170px;height:40px;' /></div><div style='padding:2px;font-family:system-ui;background-color:" +
-            themeBGcolor +
-            ";'><p style='font-size:20px;font-weight:400;color:white;padding-left:20px;' > Digital Signature Request</p></div><div><p style='padding:20px;font-family:system-ui;font-size:14px;margin-bottom:10px;'> " +
-            document.ExtUserPtr.Name +
-            ' has requested you to review and sign <strong> ' +
-            document.Name +
-            "</strong>.</p><div style='padding: 5px 0px 5px 25px;display:flex;flex-direction:row;justify-content:space-around;'><table><tr><td style='font-weight:bold;font-family:sans-serif;font-size:15px'>Sender</td><td></td><td style='color:#626363;font-weight:bold'>" +
-            sender +
-            "</td></tr><tr><td style='font-weight:bold;font-family:sans-serif;font-size:15px'>Organization</td><td></td><td style='color:#626363;font-weight:bold'> " +
-            orgName +
-            "</td></tr><tr><td style='font-weight:bold;font-family:sans-serif;font-size:15px'>Expires on</td><td></td><td style='color:#626363;font-weight:bold'>" +
-            localExpireDate +
-            "</td></tr><tr><td></td><td></td></tr></table></div><div style='margin-left:70px;'><a target=_blank href=" +
-            signPdf +
-            "><button style='padding:12px 12px 12px 12px;background-color:#d46b0f;color:white;border:0px;box-shadow:rgba(0, 0, 0, 0.05) 0px 6px 24px 0px,rgba(0, 0, 0, 0.08) 0px 0px 0px 1px;font-weight:bold;margin-top:30px;'>Sign here</button></a></div><div style='display:flex;justify-content:center;margin-top:10px;'></div></div></div><div><p> This is an automated email from OpenSign™. For any queries regarding this email, please contact the sender " +
-            sender +
-            ' directly.If you think this email is inappropriate or spam, you may file a complaint with OpenSign™ <a href=' +
-            openSignUrl +
-            ' target=_blank>here</a>.</p></div></div></body></html>',
+          document.ExtUserPtr.Email,
+        replyto: senderEmail || '',
+        html: replaceVar?.body ? replaceVar?.body : mailTemplate(mailparam).body,
       };
       const sendMail = await axios.post(url, params, { headers: headers });
       // if (sendMail.data.result.status === 'success') {

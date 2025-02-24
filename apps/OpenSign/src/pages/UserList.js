@@ -9,7 +9,7 @@ import Tooltip from "../primitives/Tooltip";
 import AddUser from "../components/AddUser";
 import Title from "../components/Title";
 import { useTranslation } from "react-i18next";
-const heading = ["Sr.No", "Name", "Email", "Phone", "Role", "Team", "Active"];
+const heading = ["Sr.No", "Name", "Email", "Phone", "Role", "Team", "Active", "Delete"];
 // const actions = [];
 const UserList = () => {
   const { t } = useTranslation();
@@ -29,6 +29,8 @@ const UserList = () => {
   const [isActLoader, setIsActLoader] = useState({});
   const [isAdmin, setIsAdmin] = useState(false);
   const [formHeader, setFormHeader] = useState(t("add-user"));
+  const [isDeleteModal, setIsDeleteModal] = useState({});
+  const [loggedInUserId, setLoggedInUserId] = useState(null);
   const recordperPage = 10;
   const startIndex = (currentPage - 1) * recordperPage; // user per page
 
@@ -101,17 +103,18 @@ const UserList = () => {
       if (extUser) {
         const admin =
           extUser?.UserRole &&
-          (extUser?.UserRole === "contracts_Admin" ||
-            extUser?.UserRole === "contracts_OrgAdmin")
+            (extUser?.UserRole === "contracts_Admin" ||
+              extUser?.UserRole === "contracts_OrgAdmin")
             ? true
             : false;
         setIsAdmin(admin);
+        setLoggedInUserId(extUser?.objectId);
       }
       const res = await Parse.Cloud.run("getuserlistbyorg", {
         organizationId: extUser.OrganizationId.objectId
       });
       const _userRes = JSON.parse(JSON.stringify(res));
-      setUserList(_userRes);
+      setUserList(_userRes.filter(user => !user.IsDeleted));
     } catch (err) {
       console.log("Err in fetch userlist", err);
       setIsAlert({ type: "danger", msg: t("something-went-wrong-mssg") });
@@ -191,6 +194,28 @@ const UserList = () => {
     setIsActiveModal({ [user.objectId]: true });
   };
 
+  const handleDeleteClick = (user) => {
+    setIsDeleteModal({ [user.objectId]: true });
+  };
+
+  const handleDeleteUser = async (user) => {
+    try {
+      setIsActLoader({ [user.objectId]: true });
+      await Parse.Cloud.run("deleteUser", { 
+        contractsUserId: user.objectId 
+      });
+  
+      setUserList(prev => prev.filter(u => u.objectId !== user.objectId));
+      setIsAlert({ type: "success", msg: t("user-deleted-success") });
+    } catch (err) {
+      setIsAlert({ type: "danger", msg: t("delete-user-error") });
+    } finally {
+      setIsActLoader({});
+      setIsDeleteModal({});
+      setTimeout(() => setIsAlert({ type: "success", msg: "" }), 1500);
+    }
+  };
+
   return (
     <div className="relative">
       <Title title={isAdmin ? "Users" : "Page not found"} />
@@ -206,195 +231,235 @@ const UserList = () => {
       )}
 
       {
-          !isLoader && (
-            <>
-              {isAdmin ? (
-                <div className="p-2 w-full bg-base-100 text-base-content op-card shadow-lg">
-                  {isAlert.msg && (
-                    <Alert type={isAlert.type}>{isAlert.msg}</Alert>
-                  )}
-                  <div className="flex flex-row items-center justify-between my-2 mx-3 text-[20px] md:text-[23px]">
-                    <div className="font-light">
-                      {t("report-name.Users")}{" "}
-                      <span className="text-xs md:text-[13px] font-normal">
-                        <Tooltip message={t("users-from-teams")} />
-                      </span>
-                    </div>
-                    <div className="flex flex-row gap-2 items-center">
-                      <div
-                        className="cursor-pointer"
-                        onClick={() => handleModal("form")}
-                      >
-                        <i className="fa-light fa-square-plus text-accent text-[30px] md:text-[40px]"></i>
-                      </div>
+        !isLoader && (
+          <>
+            {isAdmin ? (
+              <div className="p-2 w-full bg-base-100 text-base-content op-card shadow-lg">
+                {isAlert.msg && (
+                  <Alert type={isAlert.type}>{isAlert.msg}</Alert>
+                )}
+                <div className="flex flex-row items-center justify-between my-2 mx-3 text-[20px] md:text-[23px]">
+                  <div className="font-light">
+                    {t("report-name.Users")}{" "}
+                    <span className="text-xs md:text-[13px] font-normal">
+                      <Tooltip message={t("users-from-teams")} />
+                    </span>
+                  </div>
+                  <div className="flex flex-row gap-2 items-center">
+                    <div
+                      className="cursor-pointer"
+                      onClick={() => handleModal("form")}
+                    >
+                      <i className="fa-light fa-square-plus text-accent text-[30px] md:text-[40px]"></i>
                     </div>
                   </div>
-                  <div className="overflow-x-auto w-full">
-                    <table className="op-table border-collapse w-full">
-                      <thead className="text-[14px]">
-                        <tr className="border-y-[1px]">
-                          {heading?.map((item, index) => (
-                            <th key={index} className="px-4 py-2">
-                              {t(`report-heading.${item}`)}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="text-[12px]">
-                        {userList?.length > 0 && (
-                          <>
-                            {currentList.map((item, index) => (
-                              <tr className="border-y-[1px]" key={index}>
-                                {heading.includes("Sr.No") && (
-                                  <th className="px-4 py-2">
-                                    {startIndex + index + 1}
-                                  </th>
-                                )}
+                </div>
+                <div className="overflow-x-auto w-full">
+                  <table className="op-table border-collapse w-full">
+                    <thead className="text-[14px]">
+                      <tr className="border-y-[1px]">
+                        {heading?.map((item, index) => (
+                          <th key={index} className="px-4 py-2">
+                            {t(`report-heading.${item}`)}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="text-[12px]">
+                      {userList?.length > 0 && (
+                        <>
+                          {currentList.map((item, index) => (
+                            <tr className="border-y-[1px]" key={index}>
+                              {heading.includes("Sr.No") && (
+                                <th className="px-4 py-2">
+                                  {startIndex + index + 1}
+                                </th>
+                              )}
+                              <td className="px-4 py-2 font-semibold">
+                                {item?.Name}{" "}
+                              </td>
+                              <td className="px-4 py-2 ">
+                                {item?.Email || "-"}
+                              </td>
+                              <td className="px-4 py-2">
+                                {item?.Phone || "-"}
+                              </td>
+                              <td className="px-4 py-2">
+                                {item?.UserRole?.split("_").pop() || "-"}
+                              </td>
+                              <td className="px-4 py-2">
+                                {formatRow(item.TeamIds)}
+                              </td>
+                              {item.UserRole !== "contracts_Admin" && (
                                 <td className="px-4 py-2 font-semibold">
-                                  {item?.Name}{" "}
-                                </td>
-                                <td className="px-4 py-2 ">
-                                  {item?.Email || "-"}
-                                </td>
-                                <td className="px-4 py-2">
-                                  {item?.Phone || "-"}
-                                </td>
-                                <td className="px-4 py-2">
-                                  {item?.UserRole?.split("_").pop() || "-"}
-                                </td>
-                                <td className="px-4 py-2">
-                                  {formatRow(item.TeamIds)}
-                                </td>
-                                {item.UserRole !== "contracts_Admin" && (
-                                  <td className="px-4 py-2 font-semibold">
-                                    <label className="cursor-pointer relative block items-center mb-0">
-                                      <input
-                                        type="checkbox"
-                                        className="op-toggle transition-all op-toggle-secondary"
-                                        checked={item?.IsDisabled !== true}
-                                        onChange={() => handleToggleBtn(item)}
-                                      />
-                                    </label>
-                                    {isActiveModal[item.objectId] && (
-                                      <ModalUi
-                                        isOpen
-                                        title={t("user-status")}
-                                        handleClose={handleClose}
-                                      >
-                                        <div className="m-[20px]">
-                                          <div className="text-lg font-normal text-black">
-                                            {t("are-you-sure")}{" "}
-                                            {item?.IsDisabled
-                                              ? t("activate")
-                                              : t("deactivate")}{" "}
-                                            {t("this-user")}?
-                                          </div>
-                                          <hr className="bg-[#ccc] mt-4 " />
-                                          <div className="flex items-center mt-3 gap-2 text-white">
-                                            <button
-                                              onClick={() =>
-                                                handleToggleSubmit(item)
-                                              }
-                                              className="op-btn op-btn-primary"
-                                            >
-                                              {t("yes")}
-                                            </button>
-                                            <button
-                                              onClick={handleClose}
-                                              className="op-btn op-btn-secondary"
-                                            >
-                                              {t("no")}
-                                            </button>
-                                          </div>
+                                  <label className="cursor-pointer relative block items-center mb-0">
+                                    <input
+                                      type="checkbox"
+                                      className="op-toggle transition-all op-toggle-secondary"
+                                      checked={item?.IsDisabled !== true}
+                                      onChange={() => handleToggleBtn(item)}
+                                    />
+                                  </label>
+                                  {isActiveModal[item.objectId] && (
+                                    <ModalUi
+                                      isOpen
+                                      title={t("user-status")}
+                                      handleClose={handleClose}
+                                    >
+                                      <div className="m-[20px]">
+                                        <div className="text-lg font-normal text-black">
+                                          {t("are-you-sure")}{" "}
+                                          {item?.IsDisabled
+                                            ? t("activate")
+                                            : t("deactivate")}{" "}
+                                          {t("this-user")}?
                                         </div>
-                                      </ModalUi>
-                                    )}
-                                  </td>
-                                )}
-                              </tr>
-                            ))}
-                          </>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="flex flex-row  justify-between items-center text-xs font-medium">
-                    <div className="op-join flex flex-wrap items-center p-2">
-                      {userList.length > recordperPage && (
-                        <button
-                          onClick={() => paginateBack()}
-                          className="op-join-item op-btn op-btn-sm"
-                        >
-                          {t("prev")}
-                        </button>
+                                        <hr className="bg-[#ccc] mt-4 " />
+                                        <div className="flex items-center mt-3 gap-2 text-white">
+                                          <button
+                                            onClick={() =>
+                                              handleToggleSubmit(item)
+                                            }
+                                            className="op-btn op-btn-primary"
+                                          >
+                                            {t("yes")}
+                                          </button>
+                                          <button
+                                            onClick={handleClose}
+                                            className="op-btn op-btn-secondary"
+                                          >
+                                            {t("no")}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </ModalUi>
+                                  )}
+                                </td>
+                              )}
+                              {isAdmin && item.UserRole !== "contracts_Admin" && item.objectId !== loggedInUserId && (
+                                <td className="px-4 py-2">
+                                  <button
+                                    onClick={() => handleDeleteClick(item)}
+                                    disabled={item.UserRole === "contracts_Admin"}
+                                  >
+                                    <div className="op-btn-secondary op-btn op-btn-sm mr-1">
+                                      <i className="fa-light fa-trash"></i>
+                                    </div>
+                                  </button>
+                                  {isDeleteModal[item.objectId] && (
+                                    <ModalUi
+                                      isOpen
+                                      title={t("delete-user")}
+                                      handleClose={() => setIsDeleteModal({})}
+                                    >
+                                      <div className="m-[20px]">
+                                        <div className="text-lg font-normal text-black">
+                                          {t("are-you-sure-delete-user")} {item.Name}?
+                                        </div>
+                                        <hr className="bg-[#ccc] mt-4 " />
+                                        <div className="flex items-center mt-3 gap-2 text-white">
+                                          <button
+                                            onClick={() => handleDeleteUser(item)}
+                                            className="op-btn op-btn-primary"
+                                          >
+                                            {t("yes")}
+                                          </button>
+                                          <button
+                                            onClick={() => setIsDeleteModal({})}
+                                            className="op-btn op-btn-secondary"
+                                          >
+                                            {t("no")}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </ModalUi>
+                                  )}
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                        </>
                       )}
-                      {pageNumbers.map((x, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setCurrentPage(x)}
-                          disabled={x === "..."}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex flex-row  justify-between items-center text-xs font-medium">
+                  <div className="op-join flex flex-wrap items-center p-2">
+                    {userList.length > recordperPage && (
+                      <button
+                        onClick={() => paginateBack()}
+                        className="op-join-item op-btn op-btn-sm"
+                      >
+                        {t("prev")}
+                      </button>
+                    )}
+                    {pageNumbers.map((x, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setCurrentPage(x)}
+                        disabled={x === "..."}
                           className={`${
                             x === currentPage ? "op-btn-active" : ""
                           } op-join-item op-btn op-btn-sm`}
-                        >
-                          {x}
-                        </button>
-                      ))}
-                      {userList.length > recordperPage && (
-                        <button
-                          onClick={() => paginateFront()}
-                          className="op-join-item op-btn op-btn-sm"
-                        >
-                          {t("next")}
-                        </button>
-                      )}
-                    </div>
+                      >
+                        {x}
+                      </button>
+                    ))}
+                    {userList.length > recordperPage && (
+                      <button
+                        onClick={() => paginateFront()}
+                        className="op-join-item op-btn op-btn-sm"
+                      >
+                        {t("next")}
+                      </button>
+                    )}
                   </div>
-                  {userList?.length <= 0 && (
-                    <div
+                </div>
+                {userList?.length <= 0 && (
+                  <div
                       className={`${
                         isDashboard ? "h-[317px]" : ""
                       } flex flex-col items-center justify-center w-ful bg-base-100 text-base-content rounded-xl py-4`}
-                    >
-                      <div className="w-[60px] h-[60px] overflow-hidden">
-                        <img
-                          className="w-full h-full object-contain"
-                          src={pad}
-                          alt="img"
-                        />
-                      </div>
-                      <div className="text-sm font-semibold">
-                        {t("no-data-avaliable")}
-                      </div>
-                    </div>
-                  )}
-                  <ModalUi
-                    isOpen={isModal.form}
-                    title={formHeader}
-                    handleClose={() => handleModal("form")}
                   >
-                    <AddUser
-                      setIsAlert={setIsAlert}
-                      handleUserData={handleUserData}
-                      closePopup={() => handleModal("form")}
-                      setFormHeader={setFormHeader}
-                    />
-                  </ModalUi>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-screen w-full bg-base-100 text-base-content rounded-box">
-                  <div className="text-center">
-                    <h1 className="text-[60px] lg:text-[120px] font-semibold">
-                      404
-                    </h1>
-                    <p className="text-[30px] lg:text-[50px]">
-                      {t("page-not-found")}
-                    </p>
+                    <div className="w-[60px] h-[60px] overflow-hidden">
+                      <img
+                        className="w-full h-full object-contain"
+                        src={pad}
+                        alt="img"
+                      />
+                    </div>
+                    <div className="text-sm font-semibold">
+                      {t("no-data-avaliable")}
+                    </div>
                   </div>
+                )}
+                <ModalUi
+                  isOpen={isModal.form}
+                  title={formHeader}
+                  handleClose={() => handleModal("form")}
+                >
+                  <AddUser
+                    setIsAlert={setIsAlert}
+                    handleUserData={handleUserData}
+                    closePopup={() => handleModal("form")}
+                    setFormHeader={setFormHeader}
+                  />
+                </ModalUi>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-screen w-full bg-base-100 text-base-content rounded-box">
+                <div className="text-center">
+                  <h1 className="text-[60px] lg:text-[120px] font-semibold">
+                    404
+                  </h1>
+                  <p className="text-[30px] lg:text-[50px]">
+                    {t("page-not-found")}
+                  </p>
                 </div>
-              )}
-            </>
-          )
+              </div>
+            )}
+          </>
+        )
       }
     </div>
   );

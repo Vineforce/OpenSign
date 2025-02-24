@@ -24,6 +24,8 @@ import { useTranslation } from "react-i18next";
 import SelectLanguage from "../components/pdf/SelectLanguage";
 
 function Login() {
+  const appName =
+    "Excis";
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -58,7 +60,7 @@ function Login() {
   const checkUserExt = async () => {
     const app = await getAppLogo();
     if (app?.error === "invalid_json") {
-      setErrMsg(t("server-down"));
+      setErrMsg(t("server-down", { appName: appName }));
     } else if (
       app?.user === "not_exist"
     ) {
@@ -115,7 +117,8 @@ function Login() {
                   if (extUser) {
                     // console.log("extUser", extUser, extUser?.get("IsDisabled"));
                     const IsDisabled = extUser?.get("IsDisabled") || false;
-                    if (!IsDisabled) {
+                    const IsDeleted = extUser?.get("IsDeleted") || false;
+                    if (!IsDisabled && !IsDeleted) {
                       const userRole = extUser?.get("UserRole");
                       const menu =
                         userRole &&
@@ -251,7 +254,8 @@ function Login() {
           .then(async (extUser) => {
             if (extUser) {
               const IsDisabled = extUser?.get("IsDisabled") || false;
-              if (!IsDisabled) {
+              const IsDeleted = extUser?.get("IsDeleted") || false;
+              if (!IsDisabled && IsDeleted) {
                 const userRole = extUser?.get("UserRole");
                 const menu =
                   userRole &&
@@ -350,7 +354,8 @@ function Login() {
       await Parse.Cloud.run("getUserDetails").then(async (extUser) => {
         if (extUser) {
           const IsDisabled = extUser?.get("IsDisabled") || false;
-          if (!IsDisabled) {
+          const IsDeleted = extUser?.get("IsDeleted") || false;
+          if (!IsDisabled && IsDeleted) {
             const userRole = extUser.get("UserRole");
             const _currentRole = userRole;
             const menu =
@@ -506,7 +511,7 @@ function Login() {
     </div>
   ) : (
     <div>
-      <Title title={"Login Page"} />
+      <Title title="Login" />
       {state.loading && (
         <div
           aria-live="assertive"

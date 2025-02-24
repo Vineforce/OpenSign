@@ -11,6 +11,8 @@ import Tour from "reactour";
 import SignerListPlace from "../components/pdf/SignerListPlace";
 import Header from "../components/pdf/PdfHeader";
 import WidgetNameModal from "../components/pdf/WidgetNameModal";
+import { PDFDocument } from "pdf-lib";
+import { SaveFileSize } from "../constant/saveFileSize";
 import {
   pdfNewWidthFun,
   contractUsers,
@@ -34,7 +36,13 @@ import {
   handleSignatureType,
   getBase64FromUrl,
   convertPdfArrayBuffer,
-  generatePdfName
+  generatePdfName,
+  textWidget,
+  multiSignEmbed,
+  flattenPdf,
+  generateTitleFromFilename,
+  getSecureUrl,
+  toDataUrl
 } from "../constant/Utils";
 import RenderPdf from "../components/pdf/RenderPdf";
 import "../styles/AddUser.css";
@@ -72,6 +80,65 @@ const TemplatePlaceholder = () => {
   const [isSelectListId, setIsSelectId] = useState();
   const [isSendAlert, setIsSendAlert] = useState(false);
   const [isCreateDocModal, setIsCreateDocModal] = useState(false);
+
+  //---Upload additional document states started-----
+  const [isAdditionalDocModal, setisAdditionalDocModal] = useState(false);
+  
+  // Declare the state to hold the document ID
+  const [documentIdCreated, setDocumentIdCreated] = useState("");
+  const [documentsAdditional, setDocumentsAdditional] = useState([]);
+  const [loadingDocAdditional, setLoadingDocAdditional] = useState(true);
+  const [errorDocAdditional, setErrorDocAdditional] = useState(null);
+  const [triggerFetchDocAdditional, setTriggerFetchDocAdditional] = useState(null); // Trigger state for re-fetch
+  
+  // Fetch documents when documentIdCreated or triggerFetch changes
+  useEffect(() => {
+    if (documentIdCreated) {
+      fetchDocuments(); // Fetch documents whenever documentIdCreated or triggerFetch changes
+    }
+  }, [documentIdCreated, triggerFetchDocAdditional]); // Dependency on documentIdCreated and triggerFetch
+  
+  // Function to fetch documents
+  const fetchDocuments = async () => {
+    try {
+      setDocumentsAdditional([]);
+      // Use documentIdCreated instead of templateId
+      const result = await getAdditionalDocumentByDocumentId();
+      //console.log("ree", result);
+      setDocumentsAdditional(result);
+      setLoadingDocAdditional(false);
+    } catch (err) {
+      setErrorDocAdditional('Error fetching documents');
+      setLoadingDocAdditional(false);
+    }
+  };
+
+
+  const [percentageAD, setpercentageAD] = useState(0);
+  const [fileuploadAD, setFileUploadAD] = useState("");
+  const [fileloadAD, setfileloadAD] = useState(false);
+  const [isDecryptingAD, setIsDecryptingAD] = useState(false);
+  const [isPasswordAD, setIsPasswordAD] = useState(false);
+  const maxFileSize = 20;
+  const [formDataAD, setFormDataAD] = useState({
+    Name: "",
+    Description: "",
+    Note: "",
+    TimeToCompleteDays: 15,
+    SendinOrder: "false",
+    password: "",
+    file: "",
+    remindOnceInEvery: 5,
+    autoreminder: false,
+    IsEnableOTP: "false",
+    IsTourEnabled: "false",
+    NotifyOnSignatures: "",
+    Bcc: [],
+    RedirectUrl: "",
+    AllowModifications: false
+  });
+  //--- Upload additional document state declaration done------
+
   //'signersName' variable used to show all signer's name that do not have a signature widget assigned
   const [signersName, setSignersName] = useState("");
   const [showRotateAlert, setShowRotateAlert] = useState({
@@ -132,6 +199,9 @@ const TemplatePlaceholder = () => {
   const [scale, setScale] = useState(1);
   const [signatureType, setSignatureType] = useState([]);
   const [pdfArrayBuffer, setPdfArrayBuffer] = useState("");
+  const [updatedPdfUrl, setUpdatedPdfUrl] = useState("");
+  const [tempSignerId, setTempSignerId] = useState("");
+  const [unSignedWidgetId, setUnSignedWidgetId] = useState("");
   useEffect(() => {
     fetchTemplate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -238,9 +308,22 @@ const TemplatePlaceholder = () => {
             documentData[0].Placeholders &&
             documentData[0].Placeholders.length > 0
           ) {
-            setSignerPos(documentData[0].Placeholders);
+            const placeholder = documentData[0]?.Placeholders.filter(
+              (data) => data.Role !== "prefill"
+            );
+            setSignerPos(placeholder);
+            signersdata.forEach((x) => {
+              if (x.objectId) {
+                const obj = {
+                  __type: "Pointer",
+                  className: "contracts_Contactbook",
+                  objectId: x.objectId
+                };
+                signers.push(obj);
+              }
+            });
             let signers = [...documentData[0].Signers];
-            let updatedSigners = documentData[0].Placeholders.map((x) => {
+            let updatedSigners = placeholder.map((x) => {
               let matchingSigner = signers.find(
                 (y) => x.signerObjId && x.signerObjId === y.objectId
               );
@@ -275,10 +358,13 @@ const TemplatePlaceholder = () => {
             documentData[0].Placeholders &&
             documentData[0].Placeholders.length > 0
           ) {
-            let updatedSigners = documentData[0].Placeholders.map((x) => {
+            const placeholder = documentData[0]?.Placeholders.filter(
+              (data) => data.Role !== "prefill"
+            );
+            let updatedSigners = placeholder.map((x) => {
               return { Role: x.Role, Id: x.Id, blockColor: x.blockColor };
             });
-            setSignerPos(documentData[0].Placeholders);
+            setSignerPos(placeholder);
             setUniqueId(updatedSigners[0].Id);
             setSignersData(updatedSigners);
             setIsSelectId(0);
@@ -353,7 +439,8 @@ const TemplatePlaceholder = () => {
         const widgetHeight =
           defaultWidthHeight(dragTypeValue).height * containerScale;
         let dropData = [],
-          currentPagePosition;
+          currentPagePosition,
+          filterSignerPos;
         let placeHolder;
         if (item === "onclick") {
           // `getBoundingClientRect()` is used to get accurate measurement height of the div
@@ -406,7 +493,11 @@ const TemplatePlaceholder = () => {
           dropData.push(dropObj);
           placeHolder = { pageNumber: pageNumber, pos: dropData };
         }
-        let filterSignerPos = signerPos.find((data) => data.Id === uniqueId);
+        if (dragTypeValue === textWidget) {
+          filterSignerPos = signerPos.find((data) => data.Role === "prefill");
+        } else {
+          filterSignerPos = signerPos.find((data) => data.Id === uniqueId);
+        }
         const getPlaceHolder = filterSignerPos?.placeHolder;
         if (getPlaceHolder) {
           //checking exist placeholder on same page
@@ -423,20 +514,53 @@ const TemplatePlaceholder = () => {
           const newSignPos = getPos.concat(dropData);
           let xyPos = { pageNumber: pageNumber, pos: newSignPos };
           updatePlace.push(xyPos);
-          const updatesignerPos = signerPos.map((x) =>
-            x.Id === uniqueId ? { ...x, placeHolder: updatePlace } : x
-          );
+          let updatesignerPos;
+          if (dragTypeValue === textWidget) {
+            updatesignerPos = signerPos.map((x) =>
+              x.Role === "prefill" ? { ...x, placeHolder: updatePlace } : x
+            );
+          } else {
+            updatesignerPos = signerPos.map((x) =>
+              x.Id === uniqueId ? { ...x, placeHolder: updatePlace } : x
+            );
+          }
           setSignerPos(updatesignerPos);
         } else {
-          //else condition to add placeholder widgets on multiple page first time
-          const updatesignerPos = signerPos.map((x) =>
-            x.Id === uniqueId && x?.placeHolder
-              ? { ...x, placeHolder: [...x.placeHolder, placeHolder] }
-              : x.Id === uniqueId
-                ? { ...x, placeHolder: [placeHolder] }
-                : x
-          );
-          setSignerPos(updatesignerPos);
+          //if condition when widget type is prefill label text widget
+          if (dragTypeValue === textWidget) {
+            //check text widgets data (prefill) already exist then and want to add text widget on new page
+            //create new page entry with old data and update placeholder
+            if (filterSignerPos) {
+              const addPrefillData =
+                filterSignerPos && filterSignerPos?.placeHolder;
+              addPrefillData.push(placeHolder);
+              const updatePrefillPos = signerPos.map((x) =>
+                x.Role === "prefill" ? { ...x, placeHolder: addPrefillData } : x
+              );
+              setSignerPos(updatePrefillPos);
+            } //else condition if user do not have any text widget data
+            else {
+              const prefillTextWidget = {
+                signerPtr: {},
+                signerObjId: "",
+                blockColor: "#f58f8c",
+                placeHolder: [placeHolder],
+                Role: "prefill",
+                Id: key
+              };
+              setSignerPos((prev) => [...prev, prefillTextWidget]);
+            }
+          } else {
+            //else condition to add placeholder widgets on multiple page first time
+            const updatesignerPos = signerPos.map((x) =>
+              x.Id === uniqueId && x?.placeHolder
+                ? { ...x, placeHolder: [...x.placeHolder, placeHolder] }
+                : x.Id === uniqueId
+                  ? { ...x, placeHolder: [placeHolder] }
+                  : x
+            );
+            setSignerPos(updatesignerPos);
+          }
         }
 
         if (dragTypeValue === "dropdown") {
@@ -446,9 +570,14 @@ const TemplatePlaceholder = () => {
         } else if (dragTypeValue === radioButtonWidget) {
           setIsRadio(true);
         } else if (
-          [textInputWidget, "name", "company", "job title", "email"].includes(
-            dragTypeValue
-          )
+          [
+            textInputWidget,
+            textWidget,
+            "name",
+            "company",
+            "job title",
+            "email"
+          ].includes(dragTypeValue)
         ) {
           setFontSize(12);
           setFontColor("black");
@@ -509,20 +638,22 @@ const TemplatePlaceholder = () => {
         containerWH
       );
       if (keyValue >= 0) {
-        const filterSignerPos = updateSignPos.filter(
-          (data) => data.Id === signId
-        );
+        let filterSignerPos;
+        if (signId) {
+          filterSignerPos = updateSignPos.filter((data) => data.Id === signId);
+        } else {
+          filterSignerPos = updateSignPos.filter(
+            (data) => data.Role === "prefill"
+          );
+        }
 
         if (filterSignerPos.length > 0) {
           const getPlaceHolder = filterSignerPos[0].placeHolder;
-
           const getPageNumer = getPlaceHolder.filter(
             (data) => data.pageNumber === pageNumber
           );
-
           if (getPageNumer.length > 0) {
             const getXYdata = getPageNumer[0].pos;
-
             const getPosData = getXYdata;
             const addSignPos = getPosData.map((url) => {
               if (url.key === keyValue) {
@@ -542,12 +673,17 @@ const TemplatePlaceholder = () => {
               return obj;
             });
             const newUpdateSigner = updateSignPos.map((obj) => {
-              if (obj.Id === signId) {
-                return { ...obj, placeHolder: newUpdateSignPos };
+              if (signId) {
+                if (obj.Id === signId) {
+                  return { ...obj, placeHolder: newUpdateSignPos };
+                }
+              } else {
+                if (obj.Role === "prefill") {
+                  return { ...obj, placeHolder: newUpdateSignPos };
+                }
               }
               return obj;
             });
-
             setSignerPos(newUpdateSigner);
           }
         }
@@ -654,10 +790,34 @@ const TemplatePlaceholder = () => {
   };
   const alertSendEmail = async () => {
     const isPlaceholderExist = signerPos.every((data) => data.placeHolder);
-    if (isPlaceholderExist) {
+    const getPrefill = signerPos?.find((data) => data.Role === "prefill");
+    const prefillPlaceholder = getPrefill?.placeHolder;
+    let isLabel = false;
+    let unfilledTextWidgetId = "";
+    //condition is used to check text widget data is empty or have response
+    if (getPrefill) {
+      if (prefillPlaceholder) {
+        prefillPlaceholder.map((data) => {
+          if (!isLabel) {
+            const unfilledTextWidgets = data.pos.find(
+              (position) => !position.options.response
+            );
+            if (unfilledTextWidgets) {
+              isLabel = true;
+              unfilledTextWidgetId = unfilledTextWidgets.key;
+            }
+          }
+        });
+      }
+    }
+    if (getPrefill && isLabel) {
+      setUnSignedWidgetId(unfilledTextWidgetId);
+    } else if (isPlaceholderExist) {
       handleSaveTemplate();
     } else {
-      const signerList = signerPos.filter((data) => !data.placeHolder);
+      const signerList = signerPos.filter(
+        (data) => !data.placeHolder && data.Role !== "prefill"
+      );
       const getSigner = signerList.map((x) => {
         return signersdata.find((y) => y.Id === x.Id).Role;
       });
@@ -673,7 +833,7 @@ const TemplatePlaceholder = () => {
     }, 2000);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signerPos, signatureType, pdfBase64Url]);
+  }, [signerPos, signersdata, signatureType, pdfBase64Url]);
 
   // `autosavedetails` is used to save template details after every 2 sec when changes are happern in placeholder like drag-drop widgets, remove signers
   const autosavedetails = async () => {
@@ -703,13 +863,20 @@ const TemplatePlaceholder = () => {
       const templateCls = new Parse.Object("contracts_Template");
       templateCls.id = templateId;
       if (signerPos?.length > 0) {
-        templateCls.set("Placeholders", signerPos);
+        const removePrefill = signerPos.filter((x) => x.Role !== "prefill");
+        if (removePrefill.length > 0) {
+          templateCls.set("Placeholders", removePrefill);
+        }
       }
       templateCls.set("Signers", signers);
       templateCls.set("SignatureType", signatureType);
       if (pdfUrl) {
         templateCls.set("URL", pdfUrl);
       }
+      templateCls.set(
+        "TimeToCompleteDays",
+        parseInt(pdfDetails?.[0]?.TimeToCompleteDays) || 15
+      );
       if (pdfDetails[0]?.Bcc?.length) {
         const Bcc = pdfDetails[0]?.Bcc.map((x) => ({
           __type: "Pointer",
@@ -727,11 +894,60 @@ const TemplatePlaceholder = () => {
     }
   };
 
+  //embed prefill label widget data
+  const embedPrefilllData = async () => {
+    const prefillExist = signerPos.filter((data) => data.Role === "prefill");
+    if (prefillExist && prefillExist.length > 0) {
+      const placeholder = prefillExist[0].placeHolder;
+      const existingPdfBytes = pdfArrayBuffer;
+      const pdfDoc = await PDFDocument.load(existingPdfBytes, {
+        ignoreEncryption: true
+      });
+      const isSignYourSelfFlow = false;
+      try {
+        const pdfBase64 = await multiSignEmbed(
+          placeholder,
+          pdfDoc,
+          isSignYourSelfFlow,
+          scale
+        );
+        const pdfName = generatePdfName(16);
+        const pdfUrl = await convertBase64ToFile(
+          pdfName,
+          pdfBase64,
+          "",
+        );
+        const tenantId = localStorage.getItem("TenantId");
+        const buffer = atob(pdfBase64);
+        SaveFileSize(buffer.length, pdfUrl, tenantId);
+        return pdfUrl;
+      } catch (err) {
+        console.log("error to convertBase64ToFile in placeholder flow", err);
+        alert(err?.message);
+      }
+    } else if (pdfBase64Url) {
+      try {
+        const pdfName = generatePdfName(16);
+        const pdfUrl = await convertBase64ToFile(
+          pdfName,
+          pdfBase64Url,
+          "",
+        );
+        return pdfUrl;
+      } catch (err) {
+        console.log("error to convertBase64ToFile in placeholder flow", err);
+        alert(err?.message);
+      }
+    } else {
+      return pdfDetails[0].URL;
+    }
+  };
   const handleSaveTemplate = async () => {
     if (signersdata?.length) {
       setIsLoading({ isLoad: true, message: t("loading-mssg") });
       setIsSendAlert(false);
-      let signers = [];
+      let signers = [],
+        pdfUrl;
       if (signersdata?.length > 0) {
         signersdata.forEach((x) => {
           if (x.objectId) {
@@ -744,15 +960,10 @@ const TemplatePlaceholder = () => {
           }
         });
       }
-      let pdfUrl = pdfDetails[0]?.URL;
       if (pdfBase64Url) {
         try {
-          const pdfName = generatePdfName(16);
-          pdfUrl = await convertBase64ToFile(
-            pdfName,
-            pdfBase64Url,
-            "",
-          );
+          pdfUrl = await embedPrefilllData();
+          setUpdatedPdfUrl(pdfUrl);
         } catch (e) {
           console.log("error to convertBase64ToFile in placeholder flow", e);
         }
@@ -770,8 +981,9 @@ const TemplatePlaceholder = () => {
         const RedirectUrl = pdfDetails[0]?.RedirectUrl
           ? { RedirectUrl: pdfDetails[0]?.RedirectUrl }
           : {};
+        const removePrefill = signerPos.filter((x) => x?.Role !== "prefill");
         const data = {
-          Placeholders: signerPos,
+          Placeholders: removePrefill,
           Signers: signers,
           Name: pdfDetails[0]?.Name || "",
           Note: pdfDetails[0]?.Note || "",
@@ -789,6 +1001,8 @@ const TemplatePlaceholder = () => {
             pdfDetails[0]?.NotifyOnSignatures !== undefined
               ? pdfDetails[0]?.NotifyOnSignatures
               : false,
+          TimeToCompleteDays:
+            parseInt(pdfDetails?.[0]?.TimeToCompleteDays) || 15,
           ...Bcc,
           ...RedirectUrl
         };
@@ -921,36 +1135,359 @@ const TemplatePlaceholder = () => {
   const handleCreateDocModal = async () => {
     setIsCreateDocModal(false);
     setIsCreateDoc(true);
-    let pdfUrl = pdfDetails[0]?.URL;
-    if (pdfBase64Url) {
-      try {
-        const pdfName = generatePdfName(16);
-        pdfUrl = await convertBase64ToFile(
-          pdfName,
-          pdfBase64Url,
-          "",
-        );
-      } catch (e) {
-        console.log("error to convertBase64ToFile in placeholder flow", e);
-      }
-    }
+    const removePrefill = signerPos.filter((x) => x.Role !== "prefill");
     // handle create document
     const res = await createDocument(
       pdfDetails,
-      signerPos,
+      removePrefill,
       signersdata,
-      pdfUrl
+      updatedPdfUrl
     );
     if (res.status === "success") {
-      navigate(`/placeHolderSign/${res.id}`, {
-        state: { title: "Use Template" }
-      });
+      setDocumentIdCreated(res.id);
+      setisAdditionalDocModal(true);
+      // moved to other function as per additional document upload handling
+      // navigate(`/placeHolderSign/${res.id}`, {
+      //   state: { title: "Use Template" }
+      // });
       setIsCreateDoc(false);
     } else {
       setHandleError(t("something-went-wrong-mssg"));
       setIsCreateDoc(false);
     }
   };
+  //------------- handle additional document operation changes started ------------
+  //handle Popup close
+  const handleAdditionalDocClosePopup = () => {    
+     navigate(`/placeHolderSign/${documentIdCreated}`, {
+       state: { title: "Use Template" }
+     });
+     setisAdditionalDocModal(false);
+   };
+
+
+  // handle additional document close
+  const handleProceedWithOutAdditionalDoc = () => {
+    navigate(`/placeHolderSign/${documentIdCreated}`, {
+      state: { title: "Use Template" }
+    });
+    setisAdditionalDocModal(false);
+  };
+
+
+  const saveAdditionalDocument = async (userId, documentId, fileName, fileUrl, originalFileName, docSignedUrl) => {
+    try {
+      await Parse.Cloud.run("saveAdditionalDocument", {
+        userId: userId,
+        documentId: documentId,
+        fileName: fileName,
+        fileUrl: fileUrl,
+        originalFileName: originalFileName,
+        docSignedUrl:docSignedUrl
+      });
+      //console.log('Document saved successfully');
+      //--- Now we use UseEffectconst additionalDocumentArray= getAdditionalDocumentByDocumentId();
+      //setTriggerFetchDocAdditional(prev => !prev);
+      setTriggerFetchDocAdditional(new Date());
+      //--console.log(additionalDocumentArray);
+    } catch (error) {
+      console.error('Error saving document:', error);
+    }
+  };
+
+  const getAdditionalDocumentByDocumentId = async () => {
+    try {
+      const documents = await Parse.Cloud.run('getAdditionalDocumentByDocumentId', { documentId: documentIdCreated });
+      console.log('Document fetched successfully');
+      return documents;
+    } catch (error) {
+      console.error('Error fetching document:', error);
+    }
+  };
+
+  // delete additional document
+   const deleteAdditionalDoc = (addDocId) => { 
+    try {
+      if (addDocId) {
+        setLoadingDocAdditional(true);
+        Parse.Cloud.run('removeDocument', { additionalDocumentId: addDocId });
+        console.log('Document deleted successfully:', addDocId);       
+        //setTriggerFetchDocAdditional(prev => !prev);
+        setTriggerFetchDocAdditional(new Date());
+      } else {
+        console.log('Error: addDocId is undefined or null');
+      }
+    } catch (error) {
+      setLoadingDocAdditional(false);
+      console.error('Error deleting document:', error);
+    }
+  };
+  
+
+  // handle additional document save
+  const handleSaveAdditionalDocNext = () => {
+    // go to next page
+    navigate(`/placeHolderSign/${documentIdCreated}`, {
+      state: { title: "Use Template" }
+    });
+    //close the popup
+    setisAdditionalDocModal(false);
+  };
+
+  const removeFileAD = (e) => {
+    setfileloadAD(false);
+    setpercentageAD(0);
+    if (e) {
+      e.target.value = "";
+    }
+  };
+
+  function getFileAsArrayBuffer(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (e) => reject(e.target.error);
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  const handleAdditionalDocFileUpload = async (e) => {
+    // save file to datatable
+    setpercentageAD(0);
+    try {
+      let files = e.target.files;
+      setFormDataAD((prev) => ({ ...prev, file: e.target.files[0] }));
+      if (typeof files[0] !== "undefined") {
+        const mb = Math.round(files[0].size / Math.pow(1024, 2));
+        if (mb > maxFileSize) {
+          alert(`${t("file-alert-1")} ${maxFileSize} MB`);
+          setFileUploadAD("");
+          removeFileAD(e);
+          return;
+        } else {
+          if (files?.[0]?.type === "application/pdf") {
+            const size = files?.[0]?.size;
+            const name = generatePdfName(16);
+            const pdfName = `${name?.split(".")[0]}.pdf`;
+            setfileloadAD(true);
+            try {
+              const res = await getFileAsArrayBuffer(files[0]);
+              const flatPdf = await flattenPdf(res);
+              const parseFile = new Parse.File(
+                pdfName,
+                [...flatPdf],
+                "application/pdf"
+              );
+
+              try {
+                const response = await parseFile.save({
+                  progress: (progressValue, loaded, total, { type }) => {
+                    if (type === "upload" && progressValue !== null) {
+                      const percentCompleted = Math.round(
+                        (loaded * 100) / total
+                      );
+                      setpercentageAD(percentCompleted);
+                    }
+                  }
+                });
+                // The response object will contain information about the uploaded file
+                // You can access the URL of the uploaded file using response.url()
+                if (response.url()) {
+                  const fileRes = await getSecureUrl(response.url());
+                  if (fileRes.url) {
+                    setFileUploadAD(fileRes.url);
+                    setfileloadAD(false);
+                    const tenantId = localStorage.getItem("TenantId");
+                    const title = generateTitleFromFilename(files?.[0]?.name);
+                    setFormDataAD((obj) => ({ ...obj, Name: title }));
+                    SaveFileSize(size, fileRes.url, tenantId);
+
+                    // save the file to database
+                    const currentUser = Parse.User.current();
+
+                    saveAdditionalDocument(currentUser.id, documentIdCreated, response._name, response._url, files?.[0]?.name,fileRes.url);
+                    e.target.value = "";
+                    return fileRes.url;
+                  } else {
+                    removeFileAD(e);
+                  }
+                } else {
+                  removeFileAD(e);
+                }
+              } catch (error) {
+                removeFileAD(e);
+                console.error("Error uploading file:", error);
+              }
+            } catch (err) {
+              if (err?.message?.includes("is encrypted")) {
+                try {
+                  await Parse.Cloud.run("encryptedpdf", {
+                    email: Parse.User.current().getEmail()
+                  });
+                } catch (err) {
+                  console.log("err in sending posthog encryptedpdf", err);
+                }
+                try {
+                  setIsDecryptingAD(true);
+                  const size = files?.[0].size;
+                  const name = generatePdfName(16);
+                  const url = "https://ai.nxglabs.in/decryptpdf"; //
+                  let formData = new FormData();
+                  formData.append("file", files[0]);
+                  formData.append("password", "");
+                  const config = {
+                    headers: { "content-type": "multipart/form-data" },
+                    responseType: "blob"
+                  };
+                  const response = await axios.post(url, formData, config);
+                  const pdfBlob = new Blob([response.data], {
+                    type: "application/pdf"
+                  });
+                  const pdfFile = new File([pdfBlob], name, {
+                    type: "application/pdf"
+                  });
+                  setIsDecryptingAD(false);
+                  setfileloadAD(true);
+                  const res = await getFileAsArrayBuffer(pdfFile);
+                  const flatPdf = await flattenPdf(res);
+                  // Upload the file to Parse Server
+                  const parseFile = new Parse.File(
+                    name,
+                    [...flatPdf],
+                    "application/pdf"
+                  );
+
+                    await parseFile.save({
+                    progress: (progressValue, loaded, total, { type }) => {
+                      if (type === "upload" && progressValue !== null) {
+                        const percentCompleted = Math.round(
+                          (loaded * 100) / total
+                        );
+                        setpercentageAD(percentCompleted);
+                      }
+                    }
+                  });
+                  // Retrieve the URL of the uploaded file
+                  if (parseFile.url()) {
+                    const fileRes = await getSecureUrl(parseFile.url());
+                    if (fileRes.url) {
+                      setFileUploadAD(fileRes.url);
+                      removeFileAD();
+                      const title = generateTitleFromFilename(
+                        files?.[0]?.name
+                      );
+                      setFormDataAD((obj) => ({ ...obj, Name: title }));
+                      const tenantId = localStorage.getItem("TenantId");
+                      SaveFileSize(size, fileRes.url, tenantId);                      
+                      return fileRes.url;
+                    } else {
+                      removeFileAD(e);
+                    }
+                  } else {
+                    removeFileAD(e);
+                  }
+                } catch (err) {
+                  removeFileAD();
+                  if (err?.response?.status === 401) {
+                    setIsPasswordAD(true);
+                  } else {
+                    console.log("Error uploading file: ", err?.response);
+                    setIsDecryptingAD(false);
+                    e.target.value = "";
+                  }
+                }
+              } else {
+                console.log("err ", err);
+                setFileUploadAD("");
+                removeFileAD(e);
+              }
+            }
+          } else {
+            const isImage = files?.[0]?.type.includes("image/");
+            if (isImage) {
+              const image = await toDataUrl(files[0]);
+              const pdfDoc = await PDFDocument.create();
+              let embedImg;
+              if (files?.[0]?.type === "image/png") {
+                embedImg = await pdfDoc.embedPng(image);
+              } else {
+                embedImg = await pdfDoc.embedJpg(image);
+              }
+
+              // Get image dimensions
+              const imageWidth = embedImg.width;
+              const imageHeight = embedImg.height;
+              const page = pdfDoc.addPage([imageWidth, imageHeight]);
+              page.drawImage(embedImg, {
+                x: 0,
+                y: 0,
+                width: imageWidth,
+                height: imageHeight
+              });
+              const size = files?.[0]?.size;
+              const name = generatePdfName(16);
+              const getFile = await pdfDoc.save({
+                useObjectStreams: false
+              });
+              setfileloadAD(true);
+              const pdfName = `${name?.split(".")[0]}.pdf`;
+              const parseFile = new Parse.File(
+                pdfName,
+                [...getFile],
+                "application/pdf"
+              );
+
+              try {
+                const response = await parseFile.save({
+                  progress: (progressValue, loaded, total, { type }) => {
+                    if (type === "upload" && progressValue !== null) {
+                      const percentCompleted = Math.round(
+                        (loaded * 100) / total
+                      );
+                      setpercentageAD(percentCompleted);
+                    }
+                  }
+                });
+                // The response object will contain information about the uploaded file
+                // You can access the URL of the uploaded file using response.url()
+                if (response.url()) {
+                  const fileRes = await getSecureUrl(response.url());
+                  console.log(fileRes);
+                  if (fileRes.url) {
+                    setFileUploadAD(fileRes.url);
+                    setfileloadAD(false);
+                    const tenantId = localStorage.getItem("TenantId");
+                    const title = generateTitleFromFilename(files?.[0]?.name);
+                    setFormDataAD((obj) => ({ ...obj, Name: title }));
+                    SaveFileSize(size, fileRes.url, tenantId);
+                    // save the file to database
+                    const currentUser = Parse.User.current();
+                    saveAdditionalDocument(currentUser.id, documentIdCreated, response._name, response._url, files?.[0]?.name,fileRes.url);
+                    e.target.value = "";
+                    return fileRes.url;
+                  } else {
+                    removeFileAD(e);
+                  }
+                } else {
+                  removeFileAD(e);
+                }
+              } catch (error) {
+                removeFileAD(e);
+                console.error("Error uploading file:", error);
+              }
+            }
+          }
+        }
+      } else {
+        alert(t("file-alert-2"));
+        return false;
+      }
+    } catch (error) {
+      alert(error.message);
+      return false;
+    }
+  };
+//------------- handle additional document operation changes Ended ------------
   // `handleAddSigner` is used to open Add Role Modal
   const handleAddSigner = () => {
     setIsModalRole(true);
@@ -1126,6 +1663,8 @@ const TemplatePlaceholder = () => {
           updateTemplate?.[0]?.NotifyOnSignatures !== undefined
             ? updateTemplate?.[0]?.NotifyOnSignatures
             : false,
+        TimeToCompleteDays:
+          parseInt(updateTemplate?.[0]?.TimeToCompleteDays) || 15,
         ...Bcc,
         ...RedirectUrl
       };
@@ -1378,6 +1917,13 @@ const TemplatePlaceholder = () => {
     setShowDropdown(false);
     setIsRadio(false);
     setIsCheckbox(false);
+    //condition for text widget type after set all values for text widget
+    //change setUniqueId which is set in tempsignerId
+    //because textwidget do not have signer user so for selected signers we have to do
+    if (currWidgetsDetails.type === textWidget) {
+      setUniqueId(tempSignerId);
+      setTempSignerId("");
+    }
   };
 
   const clickOnZoomIn = () => {
@@ -1425,7 +1971,14 @@ const TemplatePlaceholder = () => {
       style: { fontSize: "13px" }
     }
   ];
-
+  const textFieldTour = [
+    {
+      selector: '[data-tut="IsSigned"]',
+      content: t("text-field-tour"),
+      position: "top",
+      style: { fontSize: "13px" }
+    }
+  ];
   return (
     <>
       <Title title={"Template"} />
@@ -1460,13 +2013,25 @@ const TemplatePlaceholder = () => {
                   closeWithMask={false}
                 />
               )}
-              <Tour
-                onRequestClose={() => setIsSendAlert(false)}
-                steps={signatureWidgetTour}
-                isOpen={isSendAlert}
-                rounded={5}
-                closeWithMask={false}
-              />
+              {isSendAlert && (
+                <Tour
+                  onRequestClose={() => setIsSendAlert(false)}
+                  steps={signatureWidgetTour}
+                  isOpen={true}
+                  rounded={5}
+                  closeWithMask={false}
+                /> // this is the tour for add signature widget for all role
+              )}
+              {unSignedWidgetId && (
+                <Tour
+                  onRequestClose={() => setUnSignedWidgetId("")}
+                  steps={textFieldTour}
+                  isOpen={true}
+                  rounded={5}
+                  closeWithMask={false}
+                />
+              )}
+
               {/* this component used to render all pdf pages in left side */}
               <RenderAllPdfPage
                 allPages={allPages}
@@ -1501,7 +2066,95 @@ const TemplatePlaceholder = () => {
                   setAllPages={setAllPages}
                   setPageNumber={setPageNumber}
                 />
-                <div className="w-full md:w-[95%]">
+                <div className="w-full md:w-[95%]">  
+                  <ModalUi
+                    isOpen={isAdditionalDocModal}
+                    title="Upload Additional Document(s)"
+                    showClose={false}
+                    handleClose={() => handleAdditionalDocClosePopup()}
+                  >
+                    <div className="pl-1">
+                      <div className="container">
+                        <div className="mb-2 mt-3">
+                          <input
+                            type="file"
+                            className="op-file-input op-file-input-bordered op-file-input-sm focus:outline-none hover:border-base-content w-full text-xs rounded-md mb-4"
+                            accept="application/pdf,image/png,image/jpeg"
+                            onInvalid={(e) => e.target.setCustomValidity(t("input-required"))}
+                            onChange={handleAdditionalDocFileUpload}
+                          />
+                        </div>                      
+                      </div>
+                      <div>
+                        <div className="container">
+                              {documentsAdditional && documentsAdditional?.length > 0 ? (
+                                <div>
+                                  <p className="h6 mb-3 text-dark text-center text-muted">Additional Document Uploaded</p>
+                                  <div>
+                                    {loadingDocAdditional ? (
+                                      <div>{t('loading')}</div> // Example for translation
+                                    ) : errorDocAdditional ? (
+                                      <div>{errorDocAdditional}</div>
+                                    ) : (
+                                          <table className={`table table-bordered shadow-sm rounded table-sm mr-3 
+                                      ${documentsAdditional.some(doc => doc.OriginalFileName.length > 50) ? 'table-responsive' : ''}`}>
+                                            <thead className="thead-light">
+                                              <tr>
+                                                <th>Document Name</th>
+                                                <th className="text-center">Actions</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {documentsAdditional?.map((doc, index) => (
+                                                <tr key={index}>
+                                                  <td
+                                                    className={doc.OriginalFileName.length > 50 ? 'text-truncate' : ''}
+                                                    style={doc.OriginalFileName.length > 50 ? { maxWidth: '200px' } : {}}
+                                                    data-bs-toggle="tooltip"
+                                                    title={doc.OriginalFileName}  // Tooltip with the full document name
+                                                  >
+                                                    {doc.OriginalFileName}
+                                                  </td>
+                                                  <td className="text-center">
+                                                    <a href={doc.DocSignedUrl} target="_blank" rel="noopener noreferrer" className="btn btn-link btn-sm">                                                  
+                                                      <i className="fa fa-eye" style={{ color: '#002864' }}></i>
+                                                    </a>
+                                                    <a className="btn btn-link btn-sm" onClick={() => deleteAdditionalDoc(doc.additionalDocId)}>
+                                                    <i className="fa fa-trash" style={{ color: '#28374D' }}></i>
+                                                    </a>
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                    )}
+                                  </div>
+                                </div>
+                              ):(
+                                <p className="text-muted mb-5 text-center">No Additional Document Uploaded</p>
+                              )}                         
+                          <div className="flex justify-end items-center p-[2px] mb-2">
+                          {documentsAdditional && documentsAdditional?.length > 0 ? (
+                            <button
+                              className="op-btn op-btn-primary"
+                              onClick={() => handleSaveAdditionalDocNext()}
+                            >
+                              Next
+                            </button>
+                          ) : (
+                            <button
+                              className="op-btn op-btn-secondary"
+                              onClick={() => handleProceedWithOutAdditionalDoc()}
+                            >
+                              Proceed without extra docs.
+                            </button>
+                          )}
+                        </div>
+                        </div>
+                      </div>
+                    </div>
+                  </ModalUi>
+
                   <ModalUi
                     isOpen={!IsReceipent}
                     title={t("roles")}
@@ -1606,6 +2259,10 @@ const TemplatePlaceholder = () => {
                     pageNumber={pageNumber}
                     signKey={signKey}
                     Id={uniqueId}
+                    widgetType={widgetType}
+                    setUniqueId={setUniqueId}
+                    tempSignerId={tempSignerId}
+                    setTempSignerId={setTempSignerId}
                   />
                   {/* pdf header which contain funish back button */}
                   <Header
@@ -1683,6 +2340,9 @@ const TemplatePlaceholder = () => {
                         setFontColor={setFontColor}
                         isResize={isResize}
                         divRef={divRef}
+                        setTempSignerId={setTempSignerId}
+                        uniqueId={uniqueId}
+                        unSignedWidgetId={unSignedWidgetId}
                       />
                     )}
                   </div>
@@ -1713,7 +2373,6 @@ const TemplatePlaceholder = () => {
                     handleOnBlur={handleOnBlur}
                     title={t("roles")}
                     initial={true}
-                    isTemplateFlow={true}
                     sendInOrder={pdfDetails[0].SendinOrder}
                     setSignersData={setSignersData}
                     blockColor={blockColor}
@@ -1721,6 +2380,7 @@ const TemplatePlaceholder = () => {
                     setSignerPos={setSignerPos}
                     uniqueId={uniqueId}
                     setSelectWidgetId={setSelectWidgetId}
+                    isTemplateFlow={true}
                   />
                 </div>
               ) : (

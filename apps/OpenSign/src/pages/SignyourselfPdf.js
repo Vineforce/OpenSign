@@ -66,6 +66,8 @@ import LoaderWithMsg from "../primitives/LoaderWithMsg";
 function SignYourSelf() {
   const { t } = useTranslation();
   const { docId } = useParams();
+  const appName =
+    "Excis";
   const divRef = useRef(null);
   const nodeRef = useRef(null);
   const imageRef = useRef(null);
@@ -705,7 +707,7 @@ function SignYourSelf() {
               setIsAlert({
                 header: t("error"),
                 isShow: true,
-                alertMessage: t("pdf-uncompatible")
+                alertMessage: t("pdf-uncompatible", { appName: appName })
               });
             }
           } catch (err) {
@@ -791,7 +793,7 @@ function SignYourSelf() {
       pdfFile: base64Url,
       docId: documentId,
       isCustomCompletionMail: isCustomCompletionMail,
-      signature: suffixbase64
+      signature: suffixbase64,
     };
     const resSignPdf = await Parse.Cloud.run("signPdf", params);
     if (resSignPdf) {
@@ -1197,7 +1199,7 @@ function SignYourSelf() {
   };
   return (
     <DndProvider backend={HTML5Backend}>
-      <Title title={"signyourself"} />
+      <Title title={"Signyourself"} />
       {isLoading.isLoad ? (
         <LoaderWithMsg isLoading={isLoading} />
       ) : handleError ? (

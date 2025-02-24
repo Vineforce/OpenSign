@@ -3,9 +3,6 @@ import axios from "axios";
 import Parse from "parse";
 import "../styles/signature.css";
 import { PDFDocument } from "pdf-lib";
-import {
-  themeColor
-} from "../constant/const";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { useDrop } from "react-dnd";
@@ -43,7 +40,8 @@ import {
   signatureTypes,
   handleSignatureType,
   getBase64FromUrl,
-  generatePdfName
+  generatePdfName,
+  mailTemplate
 } from "../constant/Utils";
 import RenderPdf from "../components/pdf/RenderPdf";
 import { useNavigate } from "react-router";
@@ -70,6 +68,8 @@ import AddContact from "../primitives/AddContact";
 
 function PlaceHolderSign() {
   const { t } = useTranslation();
+  const appName =
+    "Excis";
   const editorRef = useRef();
   const { state } = useLocation();
   const navigate = useNavigate();
@@ -188,7 +188,7 @@ function PlaceHolderSign() {
     );
     if (user) {
       try {
-        const defaultRequestBody = `<p>Hi {{receiver_name}},</p><br><p>We hope this email finds you well. {{sender_name}}&nbsp;has requested you to review and sign&nbsp;{{document_title}}.</p><p>Your signature is crucial to proceed with the next steps as it signifies your agreement and authorization.</p><br><p>{{signing_url}}</p><br><p>If you have any questions or need further clarification regarding the document or the signing process,  please contact the sender.</p><br><p>Thanks</p><p> Team Excis</p><br>`;
+        const defaultRequestBody = `<p>Hi {{receiver_name}},</p><br><p>We hope this email finds you well. {{sender_name}}&nbsp;has requested you to review and sign&nbsp;{{document_title}}.</p><p>Your signature is crucial to proceed with the next steps as it signifies your agreement and authorization.</p><br><p>{{signing_url}}</p><br><p>If you have any questions or need further clarification regarding the document or the signing process,  please contact the sender.</p><br><p>Thanks</p><p> Team ${appName}</p><br>`;
         const defaultSubject = `{{sender_name}} has requested you to sign {{document_title}}`;
         setDefaultBody(defaultRequestBody);
         setDefaultSubject(defaultSubject);
@@ -246,12 +246,15 @@ function PlaceHolderSign() {
     if (documentData && documentData.length > 0) {
       if (documentData[0]?.Placeholders?.length > 0) {
         const signerNotExist = documentData[0]?.Placeholders.some(
-          (data) => !data.signerObjId
+          (data) => !data.signerObjId && data.Role !== "prefill"
         );
         //condition to check any role does not attach signer
         if (signerNotExist) {
+          const filterPrefill = documentData[0]?.Placeholders?.filter(
+            (x) => x.Role !== "prefill"
+          );
           let users = [];
-          documentData[0]?.Placeholders?.forEach((element) => {
+          filterPrefill?.forEach((element) => {
             let label = "";
             const signerData = documentData[0]?.Signers.find(
               (x) => element.signerObjId && element.signerObjId === x.objectId
@@ -272,6 +275,7 @@ function PlaceHolderSign() {
           setForms(users);
         }
       }
+
       const url = documentData[0] && documentData[0]?.URL;
       //convert document url in array buffer format to use embed widgets in pdf using pdf-lib
       const arrayBuffer = await convertPdfArrayBuffer(url);
@@ -1003,7 +1007,7 @@ function PlaceHolderSign() {
         docCls.set("URL", pdfUrl);
       }
       const res = await docCls.save();
-      if (res) {
+      if (res && pdfUrl) {
         pdfDetails[0] = { ...pdfDetails[0], URL: pdfUrl };
       }
     } catch (e) {
@@ -1058,31 +1062,24 @@ function PlaceHolderSign() {
         if (updateExpiryDate) {
           data["ExpiryDate"] = { iso: updateExpiryDate, __type: "Date" };
         }
-        await axios
-          .put(
-            `${localStorage.getItem(
-              "baseUrl"
-            )}classes/contracts_Document/${documentId}`,
-            data,
-            {
-              headers: {
-                "Content-Type": "application/json",
-                "X-Parse-Application-Id": localStorage.getItem("parseAppId"),
-                "X-Parse-Session-Token": localStorage.getItem("accesstoken")
-              }
+        await axios.put(
+          `${localStorage.getItem(
+            "baseUrl"
+          )}classes/contracts_Document/${documentId}`,
+          data,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "X-Parse-Application-Id": localStorage.getItem("parseAppId"),
+              "X-Parse-Session-Token": localStorage.getItem("accesstoken")
             }
-          )
-          .then(() => {
-            setIsMailSend(true);
-            setIsLoading({ isLoad: false });
-            setIsUiLoading(false);
-            setSignerPos([]);
-            setIsSendAlert({ mssg: "confirm", alert: true });
-          })
-          .catch((err) => {
-            console.log("axois err ", err);
-            alert(t("something-went-wrong-mssg"));
-          });
+          }
+        );
+        setIsMailSend(true);
+        setIsLoading({ isLoad: false });
+        setIsUiLoading(false);
+        setSignerPos([]);
+        setIsSendAlert({ mssg: "confirm", alert: true });
       } catch (e) {
         console.log("error", e);
         alert(t("something-went-wrong-mssg"));
@@ -1152,7 +1149,8 @@ function PlaceHolderSign() {
       year: "numeric"
     });
 
-    let senderEmail = pdfDetails?.[0]?.ExtUserPtr?.Email;
+    let senderEmail =
+      pdfDetails?.[0]?.ExtUserPtr?.Email;
     let senderPhone = pdfDetails?.[0]?.ExtUserPtr?.Phone;
     let signerMail = signersdata.slice();
 
@@ -1163,7 +1161,7 @@ function PlaceHolderSign() {
     for (let i = 0; i < signerMail.length; i++) {
       try {
         const imgPng =
-          "https://www.excis.com/assets/images/main-logo.png";
+          "https://www.excis.com/assets/images/main-logo.png";        
         let url = `${localStorage.getItem("baseUrl")}functions/sendmailv3`;
         const headers = {
           "Content-Type": "application/json",
@@ -1181,8 +1179,8 @@ function PlaceHolderSign() {
         const orgName = pdfDetails[0]?.ExtUserPtr.Company
           ? pdfDetails[0].ExtUserPtr.Company
           : "";
-        const themeBGcolor = themeColor;
-        const senderName = `${pdfDetails?.[0].ExtUserPtr.Name}`;
+        const senderName =
+          pdfDetails?.[0].ExtUserPtr.Name;
         const documentName = `${pdfDetails?.[0].Name}`;
         let replaceVar;
 
@@ -1199,10 +1197,8 @@ function PlaceHolderSign() {
 
           const variables = {
             document_title: documentName,
-            sender_name:
-              senderName,
-            sender_mail:
-              senderEmail,
+            sender_name: senderName,
+            sender_mail: senderEmail,
             sender_phone: senderPhone || "",
             receiver_name: signerMail[i]?.Name || "",
             receiver_email: signerMail[i].Email,
@@ -1229,10 +1225,8 @@ function PlaceHolderSign() {
             "</body> </html>";
           const variables = {
             document_title: documentName,
-            sender_name:
-              senderName,
-            sender_mail:
-              senderEmail,
+            sender_name: senderName,
+            sender_mail: senderEmail,
             sender_phone: senderPhone || "",
             receiver_name: signerMail[i]?.Name || "",
             receiver_email: signerMail[i].Email,
@@ -1243,40 +1237,26 @@ function PlaceHolderSign() {
           };
           replaceVar = replaceMailVaribles(mailSubject, htmlReqBody, variables);
         }
+        const mailparam = {
+          senderName: senderName,
+          senderMail: senderEmail,
+          title: documentName,
+          organization: orgName,
+          localExpireDate: localExpireDate,
+          sigingUrl: signPdf
+        };
         let params = {
           extUserId: extUserId,
           recipient: signerMail[i].Email,
           subject: replaceVar?.subject
             ? replaceVar?.subject
-            : `${senderName} has requested you to sign "${documentName}"`,
-          replyto:
-            senderEmail ||
-            "",
+            : mailTemplate(mailparam).subject,
+          replyto: senderEmail,
           from:
             senderEmail,
           html: replaceVar?.body
             ? replaceVar?.body
-            : "<html><head><meta http-equiv='Content-Type' content='text/html;charset=UTF-8' /></head><body><div style='background-color:#f5f5f5; padding:20px;'><div style='box-shadow:rgba(0, 0, 0, 0.1) 0px 4px 12px;background:white;padding-bottom:20px;'><div style='padding:10px 10px 0 10px'><img src=" +
-              imgPng +
-              " height='50' style='padding:20px,width:170px,height:40px' /></div><div style='padding:2px;font-family:system-ui;background-color:" +
-              themeBGcolor +
-              ";'><p style='font-size:20px;font-weight:400;color:white;padding-left:20px;' > Digital Signature Request</p></div><div><p style='padding:20px;font-family:system-ui;font-size:14px;margin-bottom:10px;'> " +
-              pdfDetails?.[0].ExtUserPtr.Name +
-              " has requested you to review and sign <strong> " +
-              pdfDetails?.[0].Name +
-              "</strong>.</p><div style='padding: 5px 0px 5px 25px;display:flex;flex-direction:row;justify-content:space-around;'><table><tr><td style='font-weight:bold;font-family:sans-serif;font-size:15px'>Sender</td><td></td><td style='color:#626363;font-weight:bold;'>" +
-              senderEmail +
-              "</td></tr><tr><td style='font-weight:bold;font-family:sans-serif;font-size:15px'>Organization</td><td></td><td style='color:#626363;font-weight:bold'> " +
-              orgName +
-              "</td></tr><tr><td style='font-weight:bold;font-family:sans-serif;font-size:15px'>Expire on</td><td></td><td style='color:#626363;font-weight:bold'>" +
-              localExpireDate +
-              "</td></tr><tr><td></td><td></td></tr></table></div> <div style='margin-left:70px'><a target=_blank href=" +
-              signPdf +
-              "> <button style='padding: 12px 12px 12px 12px;background-color: #d46b0f;color: white;  border: 0px;box-shadow: rgba(0, 0, 0, 0.05) 0px 6px 24px 0px,rgba(0, 0, 0, 0.08) 0px 0px 0px 1px;font-weight:bold;margin-top:30px'>Sign here</button></a> </div> <div style='display: flex; justify-content: center;margin-top: 10px;'> </div></div></div><div><p> This is an automated email from Excis. For any queries regarding this email, please contact the sender " +
-              senderEmail +
-              " directly.If you think this email is inappropriate or spam, you may file a complaint with Excis   <a href= " +
-              openSignUrl +
-              " target=_blank>here</a>.</p></div></div></body></html>"
+            : mailTemplate(mailparam).body
         };
 
         sendMail = await axios.post(url, params, { headers: headers });
@@ -1934,7 +1914,9 @@ function PlaceHolderSign() {
     }
   };
   const handleDisable = () => {
-    const isAllSigner = signerPos.some((x) => !x.signerObjId);
+    const isAllSigner = signerPos.some(
+      (x) => !x.signerObjId && x.Role !== "prefill"
+    );
     return isAllSigner;
   };
   const handleCloseAttachSigner = () => {
@@ -2133,7 +2115,7 @@ function PlaceHolderSign() {
                           {pdfDetails[0].SendinOrder ? (
                             <p>
                               {t("placeholder-mail-alert", {
-                                name: pdfDetails[0]?.Signers[0]?.Name
+                                name: signersdata[0]?.Name
                               })}
                             </p>
                           ) : (
@@ -2217,7 +2199,7 @@ function PlaceHolderSign() {
                         <>
                           {/* grid grid-cols-1 md:grid-cols-2 */}
                           <div className="min-h-max max-h-[250px] overflow-y-auto">
-                            <div className="p-3 op-card border-[1px] border-gray-400 mt-3 mx-4 mb-4 bg-base-200 text-base-content flex flex-col gap-2 relative">
+                            <div className="py-3 px-[10px] op-card border-[1px] border-gray-400 mt-3 md:mx-3  mb-4 bg-base-200 text-base-content flex flex-col gap-2 relative">
                               {forms?.map((field, id) => {
                                 return (
                                   <div
@@ -2225,7 +2207,7 @@ function PlaceHolderSign() {
                                     key={field?.value}
                                   >
                                     <label>{field?.role}</label>
-                                    <div className="flex justify-between items-center gap-2">
+                                    <div className="flex justify-between items-center gap-1">
                                       <div className="flex-1">
                                         <AsyncSelect
                                           cacheOptions
