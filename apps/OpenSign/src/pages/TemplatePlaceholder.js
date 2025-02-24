@@ -34,7 +34,11 @@ import {
   handleSignatureType,
   getBase64FromUrl,
   convertPdfArrayBuffer,
-  generatePdfName
+  generatePdfName,
+  flattenPdf,
+  generateTitleFromFilename,
+  getSecureUrl,
+  toDataUrl
 } from "../constant/Utils";
 import RenderPdf from "../components/pdf/RenderPdf";
 import "../styles/AddUser.css";
@@ -53,6 +57,9 @@ import TourContentWithBtn from "../primitives/TourContentWithBtn";
 import HandleError from "../primitives/HandleError";
 import LoaderWithMsg from "../primitives/LoaderWithMsg";
 import LinkUserModal from "../primitives/LinkUserModal";
+import { PDFDocument } from "pdf-lib";
+import { SaveFileSize } from "../constant/saveFileSize";
+
 
 const TemplatePlaceholder = () => {
   const { t } = useTranslation();
@@ -72,6 +79,65 @@ const TemplatePlaceholder = () => {
   const [isSelectListId, setIsSelectId] = useState();
   const [isSendAlert, setIsSendAlert] = useState(false);
   const [isCreateDocModal, setIsCreateDocModal] = useState(false);
+
+  //---Upload additional document states started-----
+  const [isAdditionalDocModal, setisAdditionalDocModal] = useState(false);
+  
+  // Declare the state to hold the document ID
+  const [documentIdCreated, setDocumentIdCreated] = useState("");
+  const [documentsAdditional, setDocumentsAdditional] = useState([]);
+  const [loadingDocAdditional, setLoadingDocAdditional] = useState(true);
+  const [errorDocAdditional, setErrorDocAdditional] = useState(null);
+  const [triggerFetchDocAdditional, setTriggerFetchDocAdditional] = useState(null); // Trigger state for re-fetch
+  
+  // Fetch documents when documentIdCreated or triggerFetch changes
+  useEffect(() => {
+    if (documentIdCreated) {
+      fetchDocuments(); // Fetch documents whenever documentIdCreated or triggerFetch changes
+    }
+  }, [documentIdCreated, triggerFetchDocAdditional]); // Dependency on documentIdCreated and triggerFetch
+  
+  // Function to fetch documents
+  const fetchDocuments = async () => {
+    try {
+      setDocumentsAdditional([]);
+      // Use documentIdCreated instead of templateId
+      const result = await getAdditionalDocumentByDocumentId();
+      //console.log("ree", result);
+      setDocumentsAdditional(result);
+      setLoadingDocAdditional(false);
+    } catch (err) {
+      setErrorDocAdditional('Error fetching documents');
+      setLoadingDocAdditional(false);
+    }
+  };
+
+
+  const [percentageAD, setpercentageAD] = useState(0);
+  const [fileuploadAD, setFileUploadAD] = useState("");
+  const [fileloadAD, setfileloadAD] = useState(false);
+  const [isDecryptingAD, setIsDecryptingAD] = useState(false);
+  const [isPasswordAD, setIsPasswordAD] = useState(false);
+  const maxFileSize = 20;
+  const [formDataAD, setFormDataAD] = useState({
+    Name: "",
+    Description: "",
+    Note: "",
+    TimeToCompleteDays: 15,
+    SendinOrder: "false",
+    password: "",
+    file: "",
+    remindOnceInEvery: 5,
+    autoreminder: false,
+    IsEnableOTP: "false",
+    IsTourEnabled: "false",
+    NotifyOnSignatures: "",
+    Bcc: [],
+    RedirectUrl: "",
+    AllowModifications: false
+  });
+  //--- Upload additional document state declaration done------
+
   //'signersName' variable used to show all signer's name that do not have a signature widget assigned
   const [signersName, setSignersName] = useState("");
   const [showRotateAlert, setShowRotateAlert] = useState({
@@ -942,15 +1008,350 @@ const TemplatePlaceholder = () => {
       pdfUrl
     );
     if (res.status === "success") {
-      navigate(`/placeHolderSign/${res.id}`, {
-        state: { title: "Use Template" }
-      });
+      setDocumentIdCreated(res.id);
+      setisAdditionalDocModal(true);
+      // moved to other function as per additional document upload handling
+      // navigate(`/placeHolderSign/${res.id}`, {
+      //   state: { title: "Use Template" }
+      // });
       setIsCreateDoc(false);
     } else {
       setHandleError(t("something-went-wrong-mssg"));
       setIsCreateDoc(false);
     }
   };
+  //------------- handle additional document operation changes started ------------
+  //handle Popup close
+  const handleAdditionalDocClosePopup = () => {    
+     navigate(`/placeHolderSign/${documentIdCreated}`, {
+       state: { title: "Use Template" }
+     });
+     setisAdditionalDocModal(false);
+   };
+
+
+  // handle additional document close
+  const handleProceedWithOutAdditionalDoc = () => {
+    navigate(`/placeHolderSign/${documentIdCreated}`, {
+      state: { title: "Use Template" }
+    });
+    setisAdditionalDocModal(false);
+  };
+
+
+  const saveAdditionalDocument = async (userId, documentId, fileName, fileUrl, originalFileName, docSignedUrl) => {
+    try {
+      await Parse.Cloud.run("saveAdditionalDocument", {
+        userId: userId,
+        documentId: documentId,
+        fileName: fileName,
+        fileUrl: fileUrl,
+        originalFileName: originalFileName,
+        docSignedUrl:docSignedUrl
+      });
+      //console.log('Document saved successfully');
+      //--- Now we use UseEffectconst additionalDocumentArray= getAdditionalDocumentByDocumentId();
+      //setTriggerFetchDocAdditional(prev => !prev);
+      setTriggerFetchDocAdditional(new Date());
+      //--console.log(additionalDocumentArray);
+    } catch (error) {
+      console.error('Error saving document:', error);
+    }
+  };
+
+  const getAdditionalDocumentByDocumentId = async () => {
+    try {
+      const documents = await Parse.Cloud.run('getAdditionalDocumentByDocumentId', { documentId: documentIdCreated });
+      console.log('Document fetched successfully');
+      return documents;
+    } catch (error) {
+      console.error('Error fetching document:', error);
+    }
+  };
+
+  // delete additional document
+   const deleteAdditionalDoc = (addDocId) => { 
+    try {
+      if (addDocId) {
+        setLoadingDocAdditional(true);
+        Parse.Cloud.run('removeDocument', { additionalDocumentId: addDocId });
+        console.log('Document deleted successfully:', addDocId);       
+        //setTriggerFetchDocAdditional(prev => !prev);
+        setTriggerFetchDocAdditional(new Date());
+      } else {
+        console.log('Error: addDocId is undefined or null');
+      }
+    } catch (error) {
+      setLoadingDocAdditional(false);
+      console.error('Error deleting document:', error);
+    }
+  };
+  
+
+  // handle additional document save
+  const handleSaveAdditionalDocNext = () => {
+    // go to next page
+    navigate(`/placeHolderSign/${documentIdCreated}`, {
+      state: { title: "Use Template" }
+    });
+    //close the popup
+    setisAdditionalDocModal(false);
+  };
+
+  const removeFileAD = (e) => {
+    setfileloadAD(false);
+    setpercentageAD(0);
+    if (e) {
+      e.target.value = "";
+    }
+  };
+
+  function getFileAsArrayBuffer(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (e) => reject(e.target.error);
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  const handleAdditionalDocFileUpload = async (e) => {
+    // save file to datatable
+    setpercentageAD(0);
+    try {
+      let files = e.target.files;
+      setFormDataAD((prev) => ({ ...prev, file: e.target.files[0] }));
+      if (typeof files[0] !== "undefined") {
+        const mb = Math.round(files[0].size / Math.pow(1024, 2));
+        if (mb > maxFileSize) {
+          alert(`${t("file-alert-1")} ${maxFileSize} MB`);
+          setFileUploadAD("");
+          removeFileAD(e);
+          return;
+        } else {
+          if (files?.[0]?.type === "application/pdf") {
+            const size = files?.[0]?.size;
+            const name = generatePdfName(16);
+            const pdfName = `${name?.split(".")[0]}.pdf`;
+            setfileloadAD(true);
+            try {
+              const res = await getFileAsArrayBuffer(files[0]);
+              const flatPdf = await flattenPdf(res);
+              const parseFile = new Parse.File(
+                pdfName,
+                [...flatPdf],
+                "application/pdf"
+              );
+
+              try {
+                const response = await parseFile.save({
+                  progress: (progressValue, loaded, total, { type }) => {
+                    if (type === "upload" && progressValue !== null) {
+                      const percentCompleted = Math.round(
+                        (loaded * 100) / total
+                      );
+                      setpercentageAD(percentCompleted);
+                    }
+                  }
+                });
+                // The response object will contain information about the uploaded file
+                // You can access the URL of the uploaded file using response.url()
+                if (response.url()) {
+                  const fileRes = await getSecureUrl(response.url());
+                  if (fileRes.url) {
+                    setFileUploadAD(fileRes.url);
+                    setfileloadAD(false);
+                    const tenantId = localStorage.getItem("TenantId");
+                    const title = generateTitleFromFilename(files?.[0]?.name);
+                    setFormDataAD((obj) => ({ ...obj, Name: title }));
+                    SaveFileSize(size, fileRes.url, tenantId);
+
+                    // save the file to database
+                    const currentUser = Parse.User.current();
+
+                    saveAdditionalDocument(currentUser.id, documentIdCreated, response._name, response._url, files?.[0]?.name,fileRes.url);
+                    e.target.value = "";
+                    return fileRes.url;
+                  } else {
+                    removeFileAD(e);
+                  }
+                } else {
+                  removeFileAD(e);
+                }
+              } catch (error) {
+                removeFileAD(e);
+                console.error("Error uploading file:", error);
+              }
+            } catch (err) {
+              if (err?.message?.includes("is encrypted")) {
+                try {
+                  await Parse.Cloud.run("encryptedpdf", {
+                    email: Parse.User.current().getEmail()
+                  });
+                } catch (err) {
+                  console.log("err in sending posthog encryptedpdf", err);
+                }
+                try {
+                  setIsDecryptingAD(true);
+                  const size = files?.[0].size;
+                  const name = generatePdfName(16);
+                  const url = "https://ai.nxglabs.in/decryptpdf"; //
+                  let formData = new FormData();
+                  formData.append("file", files[0]);
+                  formData.append("password", "");
+                  const config = {
+                    headers: { "content-type": "multipart/form-data" },
+                    responseType: "blob"
+                  };
+                  const response = await axios.post(url, formData, config);
+                  const pdfBlob = new Blob([response.data], {
+                    type: "application/pdf"
+                  });
+                  const pdfFile = new File([pdfBlob], name, {
+                    type: "application/pdf"
+                  });
+                  setIsDecryptingAD(false);
+                  setfileloadAD(true);
+                  const res = await getFileAsArrayBuffer(pdfFile);
+                  const flatPdf = await flattenPdf(res);
+                  // Upload the file to Parse Server
+                  const parseFile = new Parse.File(
+                    name,
+                    [...flatPdf],
+                    "application/pdf"
+                  );
+
+                    await parseFile.save({
+                    progress: (progressValue, loaded, total, { type }) => {
+                      if (type === "upload" && progressValue !== null) {
+                        const percentCompleted = Math.round(
+                          (loaded * 100) / total
+                        );
+                        setpercentageAD(percentCompleted);
+                      }
+                    }
+                  });
+                  // Retrieve the URL of the uploaded file
+                  if (parseFile.url()) {
+                    const fileRes = await getSecureUrl(parseFile.url());
+                    if (fileRes.url) {
+                      setFileUploadAD(fileRes.url);
+                      removeFileAD();
+                      const title = generateTitleFromFilename(
+                        files?.[0]?.name
+                      );
+                      setFormDataAD((obj) => ({ ...obj, Name: title }));
+                      const tenantId = localStorage.getItem("TenantId");
+                      SaveFileSize(size, fileRes.url, tenantId);                      
+                      return fileRes.url;
+                    } else {
+                      removeFileAD(e);
+                    }
+                  } else {
+                    removeFileAD(e);
+                  }
+                } catch (err) {
+                  removeFileAD();
+                  if (err?.response?.status === 401) {
+                    setIsPasswordAD(true);
+                  } else {
+                    console.log("Error uploading file: ", err?.response);
+                    setIsDecryptingAD(false);
+                    e.target.value = "";
+                  }
+                }
+              } else {
+                console.log("err ", err);
+                setFileUploadAD("");
+                removeFileAD(e);
+              }
+            }
+          } else {
+            const isImage = files?.[0]?.type.includes("image/");
+            if (isImage) {
+              const image = await toDataUrl(files[0]);
+              const pdfDoc = await PDFDocument.create();
+              let embedImg;
+              if (files?.[0]?.type === "image/png") {
+                embedImg = await pdfDoc.embedPng(image);
+              } else {
+                embedImg = await pdfDoc.embedJpg(image);
+              }
+
+              // Get image dimensions
+              const imageWidth = embedImg.width;
+              const imageHeight = embedImg.height;
+              const page = pdfDoc.addPage([imageWidth, imageHeight]);
+              page.drawImage(embedImg, {
+                x: 0,
+                y: 0,
+                width: imageWidth,
+                height: imageHeight
+              });
+              const size = files?.[0]?.size;
+              const name = generatePdfName(16);
+              const getFile = await pdfDoc.save({
+                useObjectStreams: false
+              });
+              setfileloadAD(true);
+              const pdfName = `${name?.split(".")[0]}.pdf`;
+              const parseFile = new Parse.File(
+                pdfName,
+                [...getFile],
+                "application/pdf"
+              );
+
+              try {
+                const response = await parseFile.save({
+                  progress: (progressValue, loaded, total, { type }) => {
+                    if (type === "upload" && progressValue !== null) {
+                      const percentCompleted = Math.round(
+                        (loaded * 100) / total
+                      );
+                      setpercentageAD(percentCompleted);
+                    }
+                  }
+                });
+                // The response object will contain information about the uploaded file
+                // You can access the URL of the uploaded file using response.url()
+                if (response.url()) {
+                  const fileRes = await getSecureUrl(response.url());
+                  console.log(fileRes);
+                  if (fileRes.url) {
+                    setFileUploadAD(fileRes.url);
+                    setfileloadAD(false);
+                    const tenantId = localStorage.getItem("TenantId");
+                    const title = generateTitleFromFilename(files?.[0]?.name);
+                    setFormDataAD((obj) => ({ ...obj, Name: title }));
+                    SaveFileSize(size, fileRes.url, tenantId);
+                    // save the file to database
+                    const currentUser = Parse.User.current();
+                    saveAdditionalDocument(currentUser.id, documentIdCreated, response._name, response._url, files?.[0]?.name,fileRes.url);
+                    e.target.value = "";
+                    return fileRes.url;
+                  } else {
+                    removeFileAD(e);
+                  }
+                } else {
+                  removeFileAD(e);
+                }
+              } catch (error) {
+                removeFileAD(e);
+                console.error("Error uploading file:", error);
+              }
+            }
+          }
+        }
+      } else {
+        alert(t("file-alert-2"));
+        return false;
+      }
+    } catch (error) {
+      alert(error.message);
+      return false;
+    }
+  };
+//------------- handle additional document operation changes Ended ------------
   // `handleAddSigner` is used to open Add Role Modal
   const handleAddSigner = () => {
     setIsModalRole(true);
@@ -1501,7 +1902,95 @@ const TemplatePlaceholder = () => {
                   setAllPages={setAllPages}
                   setPageNumber={setPageNumber}
                 />
-                <div className="w-full md:w-[95%]">
+                <div className="w-full md:w-[95%]">  
+                  <ModalUi
+                    isOpen={isAdditionalDocModal}
+                    title="Upload Additional Document(s)"
+                    showClose={false}
+                    handleClose={() => handleAdditionalDocClosePopup()}
+                  >
+                    <div className="pl-1">
+                      <div className="container">
+                        <div className="mb-2 mt-3">
+                          <input
+                            type="file"
+                            className="op-file-input op-file-input-bordered op-file-input-sm focus:outline-none hover:border-base-content w-full text-xs rounded-md mb-4"
+                            accept="application/pdf,image/png,image/jpeg"
+                            onInvalid={(e) => e.target.setCustomValidity(t("input-required"))}
+                            onChange={handleAdditionalDocFileUpload}
+                          />
+                        </div>                      
+                      </div>
+                      <div>
+                        <div className="container">
+                              {documentsAdditional && documentsAdditional?.length > 0 ? (
+                                <div>
+                                  <p className="h6 mb-3 text-dark text-center text-muted">Additional Document Uploaded</p>
+                                  <div>
+                                    {loadingDocAdditional ? (
+                                      <div>{t('loading')}</div> // Example for translation
+                                    ) : errorDocAdditional ? (
+                                      <div>{errorDocAdditional}</div>
+                                    ) : (
+                                          <table className={`table table-bordered shadow-sm rounded table-sm mr-3 
+                                      ${documentsAdditional.some(doc => doc.OriginalFileName.length > 50) ? 'table-responsive' : ''}`}>
+                                            <thead className="thead-light">
+                                              <tr>
+                                                <th>Document Name</th>
+                                                <th className="text-center">Actions</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {documentsAdditional?.map((doc, index) => (
+                                                <tr key={index}>
+                                                  <td
+                                                    className={doc.OriginalFileName.length > 50 ? 'text-truncate' : ''}
+                                                    style={doc.OriginalFileName.length > 50 ? { maxWidth: '200px' } : {}}
+                                                    data-bs-toggle="tooltip"
+                                                    title={doc.OriginalFileName}  // Tooltip with the full document name
+                                                  >
+                                                    {doc.OriginalFileName}
+                                                  </td>
+                                                  <td className="text-center">
+                                                    <a href={doc.DocSignedUrl} target="_blank" rel="noopener noreferrer" className="btn btn-link btn-sm">                                                  
+                                                      <i className="fa fa-eye" style={{ color: '#002864' }}></i>
+                                                    </a>
+                                                    <a className="btn btn-link btn-sm" onClick={() => deleteAdditionalDoc(doc.additionalDocId)}>
+                                                    <i className="fa fa-trash" style={{ color: '#28374D' }}></i>
+                                                    </a>
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                    )}
+                                  </div>
+                                </div>
+                              ):(
+                                <p className="text-muted mb-5 text-center">No Additional Document Uploaded</p>
+                              )}                         
+                          <div className="flex justify-end items-center p-[2px] mb-2">
+                          {documentsAdditional && documentsAdditional?.length > 0 ? (
+                            <button
+                              className="op-btn op-btn-primary"
+                              onClick={() => handleSaveAdditionalDocNext()}
+                            >
+                              Next
+                            </button>
+                          ) : (
+                            <button
+                              className="op-btn op-btn-secondary"
+                              onClick={() => handleProceedWithOutAdditionalDoc()}
+                            >
+                              Proceed without extra docs.
+                            </button>
+                          )}
+                        </div>
+                        </div>
+                      </div>
+                    </div>
+                  </ModalUi>
+
                   <ModalUi
                     isOpen={!IsReceipent}
                     title={t("roles")}

@@ -53,6 +53,8 @@ import getUserListByOrg from './parsefunction/getUserListByOrg.js';
 import editContact from './parsefunction/editContact.js';
 import deleteUser from './parsefunction/deleteUser.js';
 
+import additionalDocumentOperation from './parsefunction/additionalDocumentOperation.js';
+const {saveAdditionalDocument,removeDocument,getAdditionalDocumentByDocumentId}=additionalDocumentOperation;
 
 // This afterSave function triggers after an object is added or updated in the specified class, allowing for post-processing logic.
 Parse.Cloud.afterSave('contracts_Document', DocumentAftersave);
@@ -117,3 +119,8 @@ Parse.Cloud.define('deleteUser', async (request) => {
     const { contractsUserId } = request.params;
     return deleteUser(contractsUserId);
   });
+
+//These  functions will add/save, get and remove/delete the additional documents
+Parse.Cloud.define('saveAdditionalDocument',saveAdditionalDocument);
+Parse.Cloud.define('removeDocument',removeDocument);
+Parse.Cloud.define('getAdditionalDocumentByDocumentId',getAdditionalDocumentByDocumentId);
