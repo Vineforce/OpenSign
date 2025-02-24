@@ -5,7 +5,7 @@ import { PDFDocument } from 'pdf-lib';
 dotenv.config();
 
 export const cloudServerUrl = 'http://localhost:8080/app';
-export const appName = process.env.APP_NAME || 'OpenSign™';
+export const appName = process.env.APP_NAME || 'Excis';
 export function customAPIurl() {
   const url = new URL(cloudServerUrl);
   return url.pathname === '/api/app' ? url.origin + '/api' : url.origin;
@@ -356,10 +356,10 @@ export const mailTemplate = param => {
   const themeColor = '#47a3ad';
   const subject = `${param.senderName} has requested you to sign "${param.title}"`;
   const logo =
-        `<img src='https://qikinnovation.ams3.digitaloceanspaces.com/logo.png' height='50' />`;
+        `<img src='https://excis.com/assets/images/main-logo.png' height='50' />`;
 
   const opurl =
-        ` <a href='www.opensignlabs.com' target=_blank>here</a>`;
+        ` <a href='www.excis.com' target=_blank> here</a>`;
 
   const body =
     "<html><head><meta http-equiv='Content-Type' content='text/html;charset=UTF-8' /></head><body><div style='background-color:#f5f5f5;padding:20px'><div style='background:white;padding-bottom:20px'><div style='padding:10px'>" +

@@ -108,7 +108,7 @@ async function sendNotifyMail(doc, signUser, mailProvider) {
       const logo =
             `<div><img src='https://www.excis.com/assets/images/main-logo.png' height='50' style='padding:20px' /></div>`;
       const opurl =
-            ` <a href=www.opensignlabs.com target=_blank>here</a>`;
+            ` <a href=www.excis.com target=_blank> here</a>`;
       const subject = `Document "${pdfName}" has been signed by ${signerName}`;
       const body =
         "<html><head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8'/></head><body><div style='background-color:#f5f5f5;padding:20px'><div style='background-color:white'>" +
@@ -159,7 +159,7 @@ async function sendCompletedMail(obj) {
   const logo =
         `<div><img src='https://www.excis.com/assets/images/main-logo.png' height='50' style='padding:20px'/></div>`;
   const opurl =
-        ` <a href=www.opensignlabs.com target=_blank>here</a>.</p></div></div></body></html>`;
+        ` <a href=www.excis.com target=_blank> here</a>.</p></div></div></body></html>`;
   let subject = `Document "${pdfName}" has been signed by all parties`;
   let body =
     "<html><head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8' /></head><body><div style='background-color:#f5f5f5;padding:20px'><div style='background-color:white'>" +
