@@ -5,6 +5,7 @@ import Parse from "parse";
 import Alert from "../primitives/Alert";
 import SelectFolder from "../components/shared/fields/SelectFolder";
 import SignersInput from "../components/shared/fields/SignersInput";
+import ApproversInput from "../components/shared/fields/ApproversInput";
 import Title from "../components/Title";
 import PageNotFound from "./PageNotFound";
 import { SaveFileSize } from "../constant/saveFileSize";
@@ -44,6 +45,7 @@ const Forms = (props) => {
   const inputFileRef = useRef(null);
   const navigate = useNavigate();
   const [signers, setSigners] = useState([]);
+  const [approvers, setApprovers] = useState([]);
   const [folder, setFolder] = useState({ ObjectId: "", Name: "" });
   const [formData, setFormData] = useState({
     Name: "",
@@ -403,6 +405,11 @@ const Forms = (props) => {
         if (signers && signers.length > 0) {
           object.set("Signers", signers);
         }
+
+        if (approvers && approvers.length > 0) {
+          object.set("Approvers", approvers);
+        }
+
         if (bcc && bcc.length > 0) {
           const Bcc = bcc.map((x) => ({
             __type: "Pointer",
@@ -450,6 +457,10 @@ const Forms = (props) => {
           });
           setFileUpload("");
           setpercentage(0);
+          //await saveDocumentSignApprover(res.id);
+          // Example usage:
+          //const approverId = "approverUserId1"; // Pass the approver ID you are looking for
+          //await fetchDocumentsByApproverId(approverId);
           navigate(`/${props?.redirectRoute}/${res.id}`);
         }
       } catch (err) {
@@ -463,7 +474,42 @@ const Forms = (props) => {
       alert(t("file-alert-3"));
     }
   };
+  //---------------
 
+  
+  const saveDocumentSignApprover = async (docId) => {
+    try {
+      // Example data - replace with actual data
+      const documentSignApproverData = {
+        documentId: docId,  // The existing document ID to update
+        approvers: [
+          { id: 'approverUserId1' },
+          { id: 'approverUserId2' },
+          // Add more approvers as needed
+        ]
+      };
+  
+      // Call the cloud function and pass the documentSignApproverData
+      const response = await Parse.Cloud.run('saveDocumentSignApprover', documentSignApproverData);
+  
+      console.log('Cloud function response:', response);  // Handle the success response
+    } catch (error) {
+      console.error('Error saving document:', error);  // Handle error
+    }
+  };
+  
+  
+  const fetchDocumentsByApproverId = async (approverId) => {
+    try {
+      alert(566);
+        const documents = await Parse.Cloud.run('getDocumentsByApproverId',{approverId});
+        console.log(documents); // Handle the documents returned by the query
+    } catch (error) {
+        console.error(error); // Handle any errors
+    }
+}  
+
+  //---------------------
   const handleFolder = (data) => {
     setFolder(data);
   };
@@ -475,6 +521,18 @@ const Forms = (props) => {
         objectId: x
       }));
       setSigners(updateSigners);
+    }
+  };
+
+  const handleApprovers = (data) => {
+    //--console.log(data);
+    if (data && data.length > 0) {
+      const updateApprovers = data.map((x) => ({        
+        objectId: x,
+        HasApproved:'false',
+        ApprovedOn: ''
+      }));
+      setApprovers(updateApprovers);
     }
   };
 
@@ -782,6 +840,16 @@ const Forms = (props) => {
               <SignersInput
                 label={t("signers")}
                 onChange={handleSigners}
+                isReset={isReset}
+                helptextZindex={50}
+                required
+              />
+            )}
+
+            {props.approvers && (
+              <ApproversInput
+                label={("Approvers")}
+                onChange={handleApprovers}
                 isReset={isReset}
                 helptextZindex={50}
                 required
