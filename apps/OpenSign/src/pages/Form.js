@@ -461,6 +461,7 @@ const Forms = (props) => {
           // Example usage:
           //const approverId = "approverUserId1"; // Pass the approver ID you are looking for
           //await fetchDocumentsByApproverId(approverId);
+          //await SendDocumentApprovalEmail(res.id);
           navigate(`/${props?.redirectRoute}/${res.id}`);
         }
       } catch (err) {
@@ -498,6 +499,16 @@ const Forms = (props) => {
     }
   };
   
+  //send doc Approval Email function
+  const SendDocumentApprovalEmail = async (documentId) => { 
+    try {
+      const params = { docId: documentId };
+      const docApprovalEmail = await Parse.Cloud.run("sendMailDocumentApproval", params);      
+    } catch (error) {
+      alert(t("something-went-wrong-mssg"));
+    }
+  };
+
   
   const fetchDocumentsByApproverId = async (approverId) => {
     try {
@@ -507,7 +518,7 @@ const Forms = (props) => {
     } catch (error) {
         console.error(error); // Handle any errors
     }
-}  
+  };  
 
   //---------------------
   const handleFolder = (data) => {

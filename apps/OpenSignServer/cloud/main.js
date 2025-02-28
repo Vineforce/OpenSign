@@ -59,6 +59,8 @@ const {saveAdditionalDocument,removeDocument,getAdditionalDocumentByDocumentId}=
 import documentSignApprover from './parsefunction/approvalDocumentSign.js';
 const {saveDocumentSignApprover, getApprovers, getDocumentsByApproverId}=documentSignApprover;
 
+import sendMailDocumentApproval from './parsefunction/sendMailDocumentApproval.js';
+
 // This afterSave function triggers after an object is added or updated in the specified class, allowing for post-processing logic.
 Parse.Cloud.afterSave('contracts_Document', DocumentAftersave);
 Parse.Cloud.afterSave('contracts_Contactbook', ContactbookAftersave);
@@ -134,4 +136,5 @@ Parse.Cloud.define('saveDocumentSignApprover', async (request) => {
 });
 
 Parse.Cloud.define('getDocumentsByApproverId', getDocumentsByApproverId);
-Parse.Cloud.define('getApprovers',getApprovers);
+Parse.Cloud.define('getApprovers',getApprovers); 
+Parse.Cloud.define('sendMailDocumentApproval',sendMailDocumentApproval); 
