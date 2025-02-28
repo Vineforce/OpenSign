@@ -69,8 +69,19 @@ export default async function getReport(request) {
           // 4Hhwbp482K is for Need your Signature banner count display and drill down
           // 5Go51Q7T8r is for Recent signature request grid/lsitview/table
           if (reportId === '4Hhwbp482K' || reportId === '5Go51Q7T8r') {
+              //console.log('res.data.results',res.data.results);
+              // Filter the document so that only those document get signed which have been approved 
+              // The documents need to be signed before getting approved
+              let filteredDoc = res.data.results.filter(doc => {
+                // Include document if:
+                // 1. There are no approvers (empty approvers array), or
+                // 2. All approvers have approved
+                return !doc.Approvers || doc.Approvers.length === 0 || doc.Approvers.every(x => x.HasApproved === true);
+              });
+              //console.log('filteredDoc',filteredDoc);
+
               let myDoc = [];
-              res.data.results.forEach((doc, indexDoc) => {
+              filteredDoc.forEach((doc, indexDoc) => {              
               const signerIndex = doc.Signers.findIndex(signer => signer.UserId.objectId === userId)
               // if index is zero then add in the doc array 
               if (signerIndex == 0) {
@@ -89,6 +100,7 @@ export default async function getReport(request) {
                 }
               }
             });
+            //console.log('myDoc',myDoc);
             return myDoc;
           }
           else {

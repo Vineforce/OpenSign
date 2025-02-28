@@ -62,6 +62,7 @@ export default function reportJson(id, userId) {
           'Placeholders',
           'SignedUrl',
           'ExpiryDate',
+          'Approvers',
         ],
       };
     // In progess report
@@ -255,6 +256,7 @@ export default function reportJson(id, userId) {
           'Placeholders',
           'SignedUrl',
           'ExpiryDate',
+          'Approvers',
         ],
       };
     // Drafts report show on dashboard
