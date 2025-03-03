@@ -95,6 +95,7 @@ export default function reportJson(id, userId) {
           'SendMail',
           'Placeholders',
           'SignedUrl',
+          'Approvers',
         ],
       };
     // completed documents report
@@ -222,6 +223,7 @@ export default function reportJson(id, userId) {
           'ExpiryDate',
           'Placeholders',
           'SignedUrl',
+          'Approvers',
         ],
       };
     //  Recent signature requests report show on dashboard

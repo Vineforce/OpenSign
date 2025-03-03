@@ -170,7 +170,34 @@ function PlaceHolderSign() {
     drop: (item, monitor) => addPositionOfSignature(item, monitor),
     collect: (monitor) => ({ isOver: !!monitor.isOver() })
   });
+  //-----Document Approver Workflow Started-----
+  const [hasApprover, setHasApprover] = useState(false);
+  const [sendToApprover, setSendToApprover] = useState({
+    status: false,
+    message: ""
+  });  
 
+  //send doc Approval Email function
+  const SendDocumentApprovalEmail = async (documentId) => { 
+    try {
+      const params = { docId: documentId };
+      const docApprovalEmailSent = await Parse.Cloud.run("sendMailDocumentApproval", params); 
+      return docApprovalEmailSent;
+    } catch (error) {
+      alert(t("something-went-wrong-mssg"));
+    }
+  };
+  
+  const handleSendToApprover = () => {    
+    navigate('/dashboard/35KBoSgoAK');    
+    // if (currentId) {
+    //   navigate(`/recipientSignPdf/${documentId}/${currentId}`);
+    // } else {
+    //   navigate(`/recipientSignPdf/${documentId}`);
+    // }
+  };
+
+  //-----Document Approver Workflow Ended-----
   const documentId = docId;
   useEffect(() => {
     if (documentId) {
@@ -244,6 +271,11 @@ function PlaceHolderSign() {
     //getting document details
     const documentData = await contractDocument(documentId);
     if (documentData && documentData.length > 0) {
+      if(documentData[0]?.Approvers?.length > 0)
+      {
+        setHasApprover(true);
+      }
+
       if (documentData[0]?.Placeholders?.length > 0) {
         const signerNotExist = documentData[0]?.Placeholders.some(
           (data) => !data.signerObjId && data.Role !== "prefill"
@@ -1077,12 +1109,32 @@ function PlaceHolderSign() {
         );
         setIsMailSend(true);
         setIsLoading({ isLoad: false });
-        setIsUiLoading(false);
+        //setIsUiLoading(false);
         setSignerPos([]);
-        setIsSendAlert({ mssg: "confirm", alert: true });
+        if (hasApprover) {
+          //Send email to the approvers
+         if(await SendDocumentApprovalEmail(documentId))
+         {
+          setIsUiLoading(false);
+          setSendToApprover({
+            status: true,
+            message: 'Document has been sent to the Approver(s). Once Approved then the Signers will receive the document for further actions.'
+          });
+         }
+         else
+         {
+          alert(t("something-went-wrong-mssg"));
+          setIsUiLoading(false);
+         }
+        }
+        else{  
+          setIsUiLoading(false);       
+          setIsSendAlert({ mssg: "confirm", alert: true });
+        }
       } catch (e) {
         console.log("error", e);
         alert(t("something-went-wrong-mssg"));
+        setIsUiLoading(false);
       }
     } else {
       setIsUiLoading(false);
@@ -2532,6 +2584,25 @@ function PlaceHolderSign() {
             </button>
           </div>
         </ModalUi>
+         
+        <ModalUi
+          isOpen={sendToApprover.status}
+          title='Document Approval'          
+          showClose={false}
+        >
+          <div className="h-[100%] p-[20px]">
+            <p>{sendToApprover.message}</p>
+            <div className="h-[1px] w-full my-[15px] bg-[#9f9f9f]"></div>
+            <button
+              onClick={() => handleSendToApprover()}
+              type="button"
+              className="op-btn op-btn-primary"
+            >
+              {"Ok"}
+            </button>
+          </div>
+        </ModalUi>
+
         {(isAddSigner || (isAddUser && isAddUser[uniqueId])) && (
           <LinkUserModal
             handleAddUser={handleAddUser}
