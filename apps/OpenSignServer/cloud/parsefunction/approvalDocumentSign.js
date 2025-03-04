@@ -55,6 +55,7 @@ async function getDocumentsByApproverId(approveIdData) {
   console.log('approverId===>', approverId);
   let query = new Parse.Query('contracts_Document');
   query.equalTo('Approvers.objectId', approverId);
+  query.notEqualTo('IsDeclined', true);
   try {
     const documents = await query.find({ useMasterKey: true });
     return documents;
