@@ -1928,7 +1928,7 @@ const ReportTable = (props) => {
                                           act.action === 'share' ? 
                                             (!item.Approvers || 
                                             item.Approvers.length === 0 || 
-                                            item.Approvers.every(x => x.HasApproved === true) 
+                                            item.Approvers.every(x => x.HasApproved === 'Approved') 
                                             ? () => handleActionBtn(act, item) 
                                             : null)
                                           : () => handleActionBtn(act, item)
@@ -1961,7 +1961,8 @@ const ReportTable = (props) => {
                                                   }
                                                   style={{
                                                    display: subact.btnLabel === "Resend" 
-                                                   ? (!item.Approvers ||  item.Approvers.length === 0 || item.Approvers.every(x => x.HasApproved === true))===true 
+                                                   ? (!item.Approvers ||  item.Approvers.length === 0 || 
+                                                    item.Approvers.every(x => x.HasApproved === 'Approved')) === true 
                                                    ? 'block' : 'none'
                                                    : 'block'
                                                   }}                                                                                                                                                                                            
