@@ -94,6 +94,7 @@
       "Embedding": "Embedding"
     },
     "Excis Drive": "{{appName}} Drive",
+    "Document Approval": "Document Approval",
     "Reports": "Reports",
     "Documents": "Documents",
     "Documents-Children": {
@@ -123,6 +124,7 @@
   "report-name": {
     "Draft Documents": "Draft documents",
     "Need your sign": "Need your sign",
+    "Document Approvals": "Document Approvals",
     "In-progress documents": "In-progress documents",
     "Completed Documents": "Completed documents",
     "Declined Documents": "Declined documents",
@@ -133,7 +135,10 @@
     "Contactbook": "Contactbook",
     "Templates": "Templates",
     "Teams": "Teams",
-    "Users": "Users"
+    "Users": "Users",
+    "Approval": "Need your Approval",
+    "Approved": "Approved",
+    "Rejected": "Rejected"
   },
   "btnLabel": {
     "sign": "sign",

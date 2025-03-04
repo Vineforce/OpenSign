@@ -77,6 +77,14 @@ const sidebarList = [
     objectId: "drive"
   },
   {
+    icon: "fa-light fa-stamp",
+    title: "Document Approval",
+    target: "",
+    pageType: "documentapproval",
+    description: "",
+    objectId: "5Jkcdp593L"
+  },
+  {
     icon: "fa-light fa-address-card",
     title: "Documents",
     target: "_self",
@@ -91,7 +99,7 @@ const sidebarList = [
         pageType: "report",
         description: "",
         objectId: "4Hhwbp482K"
-      },
+      },     
       {
         icon: "fa-light fa-tasks",
         title: "In Progress",

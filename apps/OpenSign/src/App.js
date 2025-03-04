@@ -20,6 +20,7 @@ import UserList from "./pages/UserList";
 import { serverUrl_fn } from "./constant/appinfo";
 import DocSuccessPage from "./pages/DocSuccessPage";
 import ValidateSession from "./primitives/ValidateSession";
+import DocumentApproval from "./pages/documentApproval";
 const DebugPdf = lazy(() => import("./pages/DebugPdf"));
 const ForgetPassword = lazy(() => import("./pages/ForgetPassword"));
 const GuestLogin = lazy(() => import("./pages/GuestLogin"));
@@ -124,6 +125,7 @@ function App() {
               <Route path="/form/:id" element={<Form />} />
               <Route path="/report/:id" element={<Report />} />
               <Route path="/dashboard/:id" element={<Dashboard />} />
+              <Route path="/documentapproval/:id" element={<DocumentApproval />} />
               <Route
                 path="/profile"
                 element={<LazyPage Page={UserProfile} />}
