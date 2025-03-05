@@ -541,7 +541,7 @@ const Forms = (props) => {
       const updateApprovers = data.map((x) => ({        
         contracts_Users_Id: x,
         HasApproved:'ApprovalPending',
-        ApprovedOn: ''
+        ApprovedRejectedOn: ''
       }));
       setApprovers(updateApprovers);
     }

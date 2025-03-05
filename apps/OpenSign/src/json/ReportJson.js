@@ -2,7 +2,6 @@
 export default function reportJson(id) {
   // console.log("json ", json);
   const head = ["Title", "Note", "Folder", "File", "Owner", "Signers"];
-  const approvalhead = ["Title", "File", "Owner", "Signers"];
   const declineHead = ["Title", "Reason", "Folder", "File", "Owner", "Signers"];
   const iphead = ["Title", "Note", "Folder", "File", "Signers"];
   const contactbook = ["Name", "Email", "Phone"];
@@ -54,62 +53,6 @@ export default function reportJson(id) {
         helpMsg:
           "This is a list of documents that are waiting for your signature"
       };
-    
-    // Document Approval Report
-    case "9OpTyuJFUH":
-      return {
-        reportName: "Approval",
-        heading: approvalhead,
-        actions: [
-          {
-            btnId: "4536",
-            btnLabel: "sign",
-            hoverLabel: "Sign",
-            btnColor: "op-btn-primary",
-            btnIcon: "fa-light fa-signature",
-            redirectUrl: "draftDocument",
-            action: "redirect"
-          }
-        ],
-        helpMsg:
-          "This is a list of documents that are waiting for your signature"
-      };
-    case "6TOPqwuYIv":
-      return {
-        reportName: "Approved",
-        heading: approvalhead,
-        actions: [
-          {
-            btnId: "4536",
-            btnLabel: "sign",
-            hoverLabel: "Sign",
-            btnColor: "op-btn-primary",
-            btnIcon: "fa-light fa-signature",
-            redirectUrl: "draftDocument",
-            action: "redirect"
-          }
-        ],
-        helpMsg:
-          "This is a list of documents that are waiting for your signature"
-      };
-    case "5YuIoQW91V":
-      return {
-        reportName: "Rejected",
-        heading: approvalhead,
-        actions: [
-          {
-            btnId: "4536",
-            btnLabel: "sign",
-            hoverLabel: "Sign",
-            btnColor: "op-btn-primary",
-            btnIcon: "fa-light fa-signature",
-            redirectUrl: "draftDocument",
-            action: "redirect"
-          }
-        ],
-        helpMsg:
-          "This is a list of documents that are waiting for your signature"
-      };   
     // In progess report
     case "1MwEuxLEkF":
       return {

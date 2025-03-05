@@ -49,16 +49,91 @@ async function saveDocumentSignApprover({ documentId, approvers }) {
   }
 }
 
+
+//query.equalTo('Approvers.objectId', approverId);
+//query.equalTo('Approvers.HasApproved',whichDocumentSignApprovalFlag);
+// query.contains('Approvers', { 
+//   objectId: approverId,
+//   HasApproved: whichDocumentSignApprovalFlag
+// });
+//query.equalTo('Approvers.objectId', approverId);
+//query.equalTo('Approvers.HasApproved', whichDocumentSignApprovalFlag);
+
+
 async function getDocumentsByApproverId(approveIdData) {
-  console.log('approveIdData===>', approveIdData);
-  const approverId = approveIdData.params.approverId;
-  console.log('approverId===>', approverId);
+  // This is _User table id
+  const approverUserId = approveIdData.params.approverId;
+  console.log(approverUserId);
+  // Get Contracts_Users table id
+  const getapproverContracts_Users_IdQuery = new Parse.Query('contracts_Users');
+  //getapproverContracts_Users_IdQuery.select('_id');  // Only fetch these columns
+  getapproverContracts_Users_IdQuery.equalTo('_User', approverUserId);
+  const approverContract_UsersId = await getapproverContracts_Users_IdQuery.first({ useMasterKey: true });
+  if (approverContract_UsersId) {
+    console.log(approverContract_UsersId.id); // Logs the Object ID if it exists
+  } else {
+    console.log("No contract found for this user.");
+  }
+  console.log(approverContract_UsersId);
+
+
+  const whichDocumentSignApprovalFlag = approveIdData.params.documentSignApprovalFlag;
   let query = new Parse.Query('contracts_Document');
-  query.equalTo('Approvers.objectId', approverId);
+  query.select('Name', 'Description', 'Signers', 'Approvers', 'DocSentAt','URL','SignedUrl');  // Only fetch these columns
+
   query.notEqualTo('IsDeclined', true);
+  query.notEqualTo('IsArchive', true);
+  query.descending('DocSentAt');
+
   try {
     const documents = await query.find({ useMasterKey: true });
-    return documents;
+
+    const processedDocuments = await Promise.all(documents.map(async (document) => {
+
+
+    // get approver Email Ids  
+    const approvers = document.get('Approvers') || [];
+    const approverEmails = await Promise.all(approvers.map(async (approver) => {
+    const userId = approver.contracts_Users_Id;
+    const approverQuery = new Parse.Query('contracts_Users');
+    approverQuery.equalTo('objectId', userId);
+    const approverUser = await approverQuery.first({ useMasterKey: true });
+    if (approverUser) {
+      return approverUser.get('Email');
+    }
+    return null;
+    }));
+    
+    // get signers email id
+    const signers = document.get('Signers') || [];
+    const SignerEmails = await Promise.all(signers.map(async (signer) => {
+    const signerUserId = signer.id;
+    if (!signerUserId) {          
+      return null;
+    }
+    const signerQuery = new Parse.Query('contracts_Contactbook');
+    signerQuery.equalTo('objectId', signerUserId);
+    const signerUser = await signerQuery.first({ useMasterKey: true })
+    if (signerUser) {
+      return signerUser.get('Email');
+    }
+    return null;
+    }));
+    
+    return {
+      Name: document.get('Name'),
+      Description: document.get('Description'),
+      Signers: document.get('Signers'),
+      Approvers: document.get('Approvers'),
+      SignersEmail: SignerEmails,
+      ApproversEmail: approverEmails,
+      DocSentAt: document.get('DocSentAt'),
+      URL: document.get('URL'),
+      SignedUrl:document.get('SignedUrl')
+    };
+    }));
+
+    return processedDocuments;
   } catch (error) {
     console.error('Error fetching documents:', error);
     throw error;
@@ -92,7 +167,7 @@ async function getApprovers(request) {
       // Add the common condition for 'CreatedBy'
       //mainQuery.equalTo('CreatedBy', searchObj.CreatedBy);
       mainQuery.notEqualTo('IsDeleted', true);
-      let isJWT='undefined';
+      let isJWT = 'undefined';
       //--console.log('searchObj.sessionToken',searchObj.sessionToken)
       const findOpt = isJWT ? { useMasterKey: true } : { sessionToken: searchObj.sessionToken };
       const contactRes = await mainQuery.find(findOpt);

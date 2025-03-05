@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
 import AsyncSelect from "react-select/async";
-//import AddSigner from "../../AddSigner";
 import Parse from "parse";
 import Tooltip from "../../../primitives/Tooltip";
-//import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 function arrayMove(array, from, to) {
@@ -12,20 +10,6 @@ function arrayMove(array, from, to) {
   return array;
 }
 
-// const AddApproverModal = ({ isOpen, children }) => {
-//   if (!isOpen) {
-//     return null;
-//   }
-
-//   return createPortal(
-//     <div className="op-modal op-modal-open">
-//       <div className="op-modal-box p-0 min-w-[90%] md:min-w-[500px] max-h-90 overflow-y-auto hide-scrollbar text-sm">
-//         {children}
-//       </div>
-//     </div>,
-//     document.body
-//   );
-// };
 
 /**
  * react-sortable-hoc is depcreated not usable from react 18.x.x
@@ -81,24 +65,7 @@ const ApproversInput = (props) => {
     // eslint-disable-next-line
   }, [selected]);
 
-  // const handleModalCloseClick = () => {
-  //   setIsModel(false);
-  //   setModalIsOpen(false);
-  // };
-
-  // const openModal = () => {
-  //   setModalIsOpen(true);
-  // };
-
-  // `handleNewDetails` is used to set just save from quick form to selected option in dropdown
-  // const handleNewDetails = (data) => {
-  //   setState([...state, data]);
-  //   if (selected.length > 0) {
-  //     setSelected([...selected, data]);
-  //   } else {
-  //     setSelected([data]);
-  //   }
-  // };
+ 
   const loadOptions = async (inputValue) => {
     try {
       const params = { search: inputValue };
@@ -149,7 +116,7 @@ const ApproversInput = (props) => {
         </span>
       </label>
       <div className="flex gap-x-[5px]">
-        <div className="w-full z-40">
+        <div className="w-full z-39">
           <AsyncSelect
             onSortEnd={onSortEnd}
             distance={4}
@@ -191,34 +158,6 @@ const ApproversInput = (props) => {
           />
         </span>
         </div>
-        {/* <div
-          onClick={() => {
-            setIsModel(true);
-            openModal();
-          }}
-          className="cursor-pointer op-input op-input-bordered focus:outline-none hover:border-base-content max-h-[38px] min-w-[48px] flex justify-center items-center"
-        >
-          <i className="fa-light fa-plus"></i>
-        </div> */}
-        {/* <AddApproverModal isOpen={modalIsOpen}>
-          <h3 className="text-base-content font-bold text-lg pt-[15px] px-[20px]">
-            {"Add Contract User"}
-          </h3>
-          <button
-            onClick={handleModalCloseClick}
-            className="op-btn op-btn-sm op-btn-circle op-btn-ghost text-base-content absolute right-2 top-2"
-          >
-            ✕
-          </button>
-          {isModal && (
-            <AddSigner
-              valueKey={"objectId"}
-              displayKey={"Name"}
-              details={handleNewDetails}
-              closePopup={handleModalCloseClick}
-            />
-          )}
-        </AddApproverModal> */}
       </div>
     </div>
   );

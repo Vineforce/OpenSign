@@ -189,12 +189,7 @@ function PlaceHolderSign() {
   };
   
   const handleSendToApprover = () => {    
-    navigate('/dashboard/35KBoSgoAK');    
-    // if (currentId) {
-    //   navigate(`/recipientSignPdf/${documentId}/${currentId}`);
-    // } else {
-    //   navigate(`/recipientSignPdf/${documentId}`);
-    // }
+    navigate('/dashboard/35KBoSgoAK');
   };
 
   //-----Document Approver Workflow Ended-----

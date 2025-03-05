@@ -94,7 +94,6 @@
       "Embedding": "Embedding"
     },
     "Excis Drive": "{{appName}} Drive",
-    "Document Approval": "Document Approval",
     "Reports": "Reports",
     "Documents": "Documents",
     "Documents-Children": {
@@ -115,6 +114,12 @@
       "Teams": "Teams",
       "Team-update-successfully": "Team Updated successfully.",
       "Users": "Users"
+    },
+    "Document Sign Approval": "Document Approval",
+    "Document Sign Approval-Children":{
+      "Document Sign Pending":"Pending",
+      "Document Sign Approved": "Approved",
+      "Document Sign Rejected":"Rejected"
     }
   },
   "dashboard-card": {
@@ -124,7 +129,6 @@
   "report-name": {
     "Draft Documents": "Draft documents",
     "Need your sign": "Need your sign",
-    "Document Approvals": "Document Approvals",
     "In-progress documents": "In-progress documents",
     "Completed Documents": "Completed documents",
     "Declined Documents": "Declined documents",
@@ -135,10 +139,7 @@
     "Contactbook": "Contactbook",
     "Templates": "Templates",
     "Teams": "Teams",
-    "Users": "Users",
-    "Approval": "Need your Approval",
-    "Approved": "Approved",
-    "Rejected": "Rejected"
+    "Users": "Users"
   },
   "btnLabel": {
     "sign": "sign",
@@ -183,7 +184,8 @@
     "Logs": "Logs",
     "Expiry-date": "Expiry date",
     "Delete": "Delete",
-    "Additional-document":"Additional Document"
+    "Description":"Description",
+    "Approvers":"Approvers"
   },
   "report-help": {
     "Draft Documents": "These are documents you have started but have not finalized for sending.",
