@@ -71,7 +71,7 @@ async function getDocumentsByApproverId(approveIdData) {
   const whichDocumentSignApprovalFlag = approveIdData.params.documentSignApprovalFlag;
 
   let query = new Parse.Query('contracts_Document');
-  query.select('Name', 'Description', 'Signers', 'Approvers', 'DocSentAt','URL','SignedUrl');  // Only fetch these columns
+  query.select('Name', 'Description', 'Signers', 'Approvers', 'DocSentAt','URL','SignedUrl','CreatedBy');  // Only fetch these columns
   query.notEqualTo('IsDeclined', true);
   query.notEqualTo('IsArchive', true);
   query.descending('DocSentAt');
@@ -109,7 +109,20 @@ async function getDocumentsByApproverId(approveIdData) {
     }
     return null;
     }));
-    
+
+    // get the owner name 
+    let CreatedById=document.get('CreatedBy').id;
+    const userTableQuery = new Parse.Query('_User');
+    userTableQuery.equalTo('objectId', CreatedById);
+    userTableQuery.select('name','email');
+    const user = await userTableQuery.first({ useMasterKey: true });
+    let ownerUserName='';
+    let ownerUserEmail='';
+    if (user) {
+      ownerUserName= user.get('name');     
+      ownerUserEmail= user.get('email');
+    }
+
     return {
       Name: document.get('Name'),
       Description: document.get('Description'),
@@ -119,8 +132,11 @@ async function getDocumentsByApproverId(approveIdData) {
       ApproversEmail: approverEmails,
       DocSentAt: document.get('DocSentAt'),
       URL: document.get('URL'),
-      SignedUrl:document.get('SignedUrl')
+      SignedUrl:document.get('SignedUrl'),
+      ownerUserName:ownerUserName,
+      ownerUserEmail:ownerUserEmail,
     };
+
     }));
 
     return processedDocuments;
