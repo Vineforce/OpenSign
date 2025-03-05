@@ -62,25 +62,16 @@ async function saveDocumentSignApprover({ documentId, approvers }) {
 
 async function getDocumentsByApproverId(approveIdData) {
   // This is _User table id
-  const approverUserId = approveIdData.params.approverId;
-  console.log(approverUserId);
+  const approverUserId = approveIdData.params.approverId;  
   // Get Contracts_Users table id
   const getapproverContracts_Users_IdQuery = new Parse.Query('contracts_Users');
-  //getapproverContracts_Users_IdQuery.select('_id');  // Only fetch these columns
-  getapproverContracts_Users_IdQuery.equalTo('_User', approverUserId);
-  const approverContract_UsersId = await getapproverContracts_Users_IdQuery.first({ useMasterKey: true });
-  if (approverContract_UsersId) {
-    console.log(approverContract_UsersId.id); // Logs the Object ID if it exists
-  } else {
-    console.log("No contract found for this user.");
-  }
-  console.log(approverContract_UsersId);
-
-
+  getapproverContracts_Users_IdQuery.equalTo('UserId', { __type: 'Pointer', className: '_User', objectId: approverUserId });
+  const approverContract_UsersIdData = await getapproverContracts_Users_IdQuery.first({ useMasterKey: true });  
+  const approverContracts_Users_Id = approverContract_UsersIdData.id  
   const whichDocumentSignApprovalFlag = approveIdData.params.documentSignApprovalFlag;
+
   let query = new Parse.Query('contracts_Document');
   query.select('Name', 'Description', 'Signers', 'Approvers', 'DocSentAt','URL','SignedUrl');  // Only fetch these columns
-
   query.notEqualTo('IsDeclined', true);
   query.notEqualTo('IsArchive', true);
   query.descending('DocSentAt');
@@ -89,7 +80,6 @@ async function getDocumentsByApproverId(approveIdData) {
     const documents = await query.find({ useMasterKey: true });
 
     const processedDocuments = await Promise.all(documents.map(async (document) => {
-
 
     // get approver Email Ids  
     const approvers = document.get('Approvers') || [];
