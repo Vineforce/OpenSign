@@ -7,7 +7,8 @@ import Loader from "../primitives/Loader";
 import Title from "../components/Title";
 import Alert from "../primitives/Alert";
 import Tooltip from "../primitives/Tooltip";
-import {fetchUrl, getSignedUrl} from "../constant/Utils";
+import ModalUi from "../primitives/ModalUi";
+import { fetchUrl, getSignedUrl } from "../constant/Utils";
 
 
 const heading = ["Name", "Description", "Owner", "Signers", "Approvers"];
@@ -15,8 +16,12 @@ const heading = ["Name", "Description", "Owner", "Signers", "Approvers"];
 const DocumentSignPending = () => {
   const [SignPending, setSignPending] = useState([]);
   const [isLoader, setIsLoader] = useState(false);
-  const [isAlert, setIsAlert] = useState(false);
   const [isAlertMessage, setIsAlertMessage] = useState({ type: "success", msg: "" });
+  const [isRejectSignModal, setIsRejectSignModal] = useState(false);
+
+  //-----  Send Email to Signers started ---
+const [pdfDetails, setPdfDetails] = useState([]);
+  //------ Send Email to Signers ended -----
 
   const { t } = useTranslation();
   const location = useLocation();
@@ -31,8 +36,8 @@ const DocumentSignPending = () => {
   const currentList = SignPending?.slice(indexOfFirstDoc, indexOfLastDoc);
   const currentUser = Parse.User.current();
 
-  useEffect(() => {    
-    fetchDocumentsByApproverId(currentUser.id);
+  useEffect(() => {
+    fetchDocumentsByApproverId(currentUser.id);   
   }, []);
 
   const fetchDocumentsByApproverId = async (approverId) => {
@@ -43,8 +48,7 @@ const DocumentSignPending = () => {
       setSignPending(documents);
       setIsLoader(false);
     } catch (error) {
-      console.error(error); 
-      setIsAlert(true);
+      console.error(error);
       setIsAlertMessage({ type: "danger", msg: t("something-went-wrong-mssg") });
       setIsLoader(false);
     }
@@ -115,16 +119,16 @@ const DocumentSignPending = () => {
     return pages;
   };
   const pageNumbers = getPaginationRange();
- 
+
   const handleViewDocument = async (item) => {
     const url = item?.SignedUrl || item?.FileUrl || "";
     const pdfName = item?.Name?.length > 100
       ? item?.OriginalFileName?.slice(0, 100)
       : item?.OriginalFileName || "Document";
-  
+
     const templateId = '';
     const docId = item.objectId;
-  
+
     if (url) {
       try {
         const signedUrl = await getSignedUrl(
@@ -132,7 +136,7 @@ const DocumentSignPending = () => {
           docId,
           templateId
         );
-  
+
         // Create an anchor element to open the file in a new tab
         const link = document.createElement('a');
         link.href = signedUrl; // Use the signed URL
@@ -141,7 +145,7 @@ const DocumentSignPending = () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link); // Clean up after opening the link
-  
+
       } catch (err) {
         console.log("err in getsignedurl", err);
         alert(t("something-went-wrong-mssg"));
@@ -149,47 +153,266 @@ const DocumentSignPending = () => {
     }
   };
   const handleDownloadDocument = async (item) => {
-     const url = item?.SignedUrl || item?.FileUrl || "";
-     const pdfName = item?.Name?.length > 100
-       ? item?.OriginalFileName?.slice(0, 100)
-       : item?.OriginalFileName || "Document";
- 
-     const templateId = '';
-     const docId = item.objectId;
-     if (url) {
-       try {
- 
-         const signedUrl = await getSignedUrl(
-           url,
-           docId,
-           templateId
-         );
-         await fetchUrl(signedUrl, pdfName);
- 
-       } catch (err) {
-         console.log("err in getsignedurl", err);
-         alert(t("something-went-wrong-mssg"));
-       }
-     }
-   };
+    const url = item?.SignedUrl || item?.FileUrl || "";
+    const pdfName = item?.Name?.length > 100
+      ? item?.OriginalFileName?.slice(0, 100)
+      : item?.OriginalFileName || "Document";
+
+    const templateId = '';
+    const docId = item.objectId;
+    if (url) {
+      try {
+
+        const signedUrl = await getSignedUrl(
+          url,
+          docId,
+          templateId
+        );
+        await fetchUrl(signedUrl, pdfName);
+
+      } catch (err) {
+        console.log("err in getsignedurl", err);
+        alert(t("something-went-wrong-mssg"));
+      }
+    }
+  };
 
   const handleApproveDocumentSign = async (item, approveReject) => {
     try {
-        const params = { approverUserId: currentUser.id,documentId:item.DocumentId, approvedorrejected: approveReject }      
-        const approveRejectStatus = await Parse.Cloud.run('approveRejectDocumentSign',params);
+      const params = { approverUserId: currentUser.id, documentId: item.DocumentId, approvedorrejected: approveReject }
+      const approveRejectStatus = await Parse.Cloud.run('approveRejectDocumentSign', params);  
+      // check if all approver(s) has approved then send email to Signers  
+      hasAllApproverApproved(item.DocumentId)
+      .then(() => {
         if (approveRejectStatus) {
-          setIsAlert(true);
-          setIsAlertMessage({ type: "success", msg: approveReject=='Approved'?'Document Sign Approved':'Document Sign Rejected' }); 
+          setIsAlertMessage({ type: "success", msg: approveReject == 'Approved' ? 'Document Sign Approved' : 'Document Sign Rejected' });
           setTimeout(() => {
             setIsAlertMessage({ type: "danger", msg: '' });
-            setIsAlert(false);
             fetchDocumentsByApproverId(currentUser.id);
-          }, 1500); 
+          }, 1500);
         }
+      })
+      .catch((error) => {
+        console.error('Error approving document:', error);
+      });
+     
     } catch (error) {
-        console.error(error); // Handle any errors
+      console.error(error); // Handle any errors
     }
   };
+
+  const handleRejectDocumentClick = () => {
+    setIsRejectSignModal(true)
+  };
+
+  const handleClose = () => {
+    setIsRejectSignModal(false);
+  };
+
+  const hasAllApproverApproved = async (docId) => {
+    try {
+      const params = { documentId: docId }
+      const allApproverApprovedStatus = await Parse.Cloud.run('hasAllApproverApproved', params);
+      if (allApproverApprovedStatus) {
+        // write the code to handle email and further process
+        sendEmailToSigners();
+      }
+    } catch (error) {
+      console.error(error); 
+    }
+  };
+
+
+  // const sendEmailToSigners = async () => {
+  //   let htmlReqBody;
+  //   setIsUiLoading(true);
+  //   setIsSendAlert({});
+  //   let sendMail;
+  //   const expireDate = pdfDetails?.[0].ExpiryDate.iso;
+  //   const newDate = new Date(expireDate);
+  //   const localExpireDate = newDate.toLocaleDateString("en-US", {
+  //     day: "numeric",
+  //     month: "long",
+  //     year: "numeric"
+  //   });
+
+  //   let senderEmail =
+  //     pdfDetails?.[0]?.ExtUserPtr?.Email;
+  //   let senderPhone = pdfDetails?.[0]?.ExtUserPtr?.Phone;
+  //   let signerMail = signersdata.slice();
+
+  //   if (pdfDetails?.[0]?.SendinOrder && pdfDetails?.[0]?.SendinOrder === true) {
+  //     signerMail.splice(1);
+  //   }
+
+  //   for (let i = 0; i < signerMail.length; i++) {
+  //     try {
+  //       const imgPng =
+  //         "https://www.excis.com/assets/images/main-logo.png";        
+  //       let url = `${localStorage.getItem("baseUrl")}functions/sendmailv3`;
+  //       const headers = {
+  //         "Content-Type": "application/json",
+  //         "X-Parse-Application-Id": localStorage.getItem("parseAppId"),
+  //         sessionToken: localStorage.getItem("accesstoken")
+  //       };
+  //       const objectId = signerMail[i].objectId;
+  //       const hostUrl = window.location.origin;
+  //       //encode this url value `${pdfDetails?.[0].objectId}/${signerMail[i].Email}/${objectId}` to base64 using `btoa` function
+  //       const encodeBase64 = btoa(
+  //         `${pdfDetails?.[0].objectId}/${signerMail[i].Email}/${objectId}`
+  //       );
+  //       let signPdf = `${hostUrl}/login/${encodeBase64}`;
+  //       const openSignUrl = "https://www.excis.com";
+  //       const orgName = pdfDetails[0]?.ExtUserPtr.Company
+  //         ? pdfDetails[0].ExtUserPtr.Company
+  //         : "";
+  //       const senderName =
+  //         pdfDetails?.[0].ExtUserPtr.Name;
+  //       const documentName = `${pdfDetails?.[0].Name}`;
+  //       let replaceVar;
+
+  //       if (
+  //         requestBody &&
+  //         requestSubject &&
+  //         isCustomize
+  //       ) {
+  //         const replacedRequestBody = requestBody.replace(/"/g, "'");
+  //         htmlReqBody =
+  //           "<html><head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8' /></head><body>" +
+  //           replacedRequestBody +
+  //           "</body> </html>";
+
+  //         const variables = {
+  //           document_title: documentName,
+  //           sender_name: senderName,
+  //           sender_mail: senderEmail,
+  //           sender_phone: senderPhone || "",
+  //           receiver_name: signerMail[i]?.Name || "",
+  //           receiver_email: signerMail[i].Email,
+  //           receiver_phone: signerMail[i]?.Phone || "",
+  //           expiry_date: localExpireDate,
+  //           company_name: orgName,
+  //           signing_url: `<a href=${signPdf} target=_blank>Sign here</a>`
+  //         };
+  //         replaceVar = replaceMailVaribles(
+  //           requestSubject,
+  //           htmlReqBody,
+  //           variables
+  //         );
+  //       } else if (
+  //         tenantMailTemplate?.body &&
+  //         tenantMailTemplate?.subject
+  //       ) {
+  //         const mailBody = tenantMailTemplate?.body;
+  //         const mailSubject = tenantMailTemplate?.subject;
+  //         const replacedRequestBody = mailBody.replace(/"/g, "'");
+  //         const htmlReqBody =
+  //           "<html><head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8' /></head><body>" +
+  //           replacedRequestBody +
+  //           "</body> </html>";
+  //         const variables = {
+  //           document_title: documentName,
+  //           sender_name: senderName,
+  //           sender_mail: senderEmail,
+  //           sender_phone: senderPhone || "",
+  //           receiver_name: signerMail[i]?.Name || "",
+  //           receiver_email: signerMail[i].Email,
+  //           receiver_phone: signerMail[i]?.Phone || "",
+  //           expiry_date: localExpireDate,
+  //           company_name: orgName,
+  //           signing_url: `<a href=${signPdf} target=_blank>Sign here</a>`
+  //         };
+  //         replaceVar = replaceMailVaribles(mailSubject, htmlReqBody, variables);
+  //       }
+  //       const mailparam = {
+  //         senderName: senderName,
+  //         senderMail: senderEmail,
+  //         title: documentName,
+  //         organization: orgName,
+  //         localExpireDate: localExpireDate,
+  //         sigingUrl: signPdf
+  //       };
+  //       let params = {
+  //         extUserId: extUserId,
+  //         recipient: signerMail[i].Email,
+  //         subject: replaceVar?.subject
+  //           ? replaceVar?.subject
+  //           : mailTemplate(mailparam).subject,
+  //         replyto: senderEmail,
+  //         from:
+  //           senderEmail,
+  //         html: replaceVar?.body
+  //           ? replaceVar?.body
+  //           : mailTemplate(mailparam).body
+  //       };
+
+  //       sendMail = await axios.post(url, params, { headers: headers });
+  //     } catch (error) {
+  //       console.log("error", error);
+  //     }
+  //   }
+  //   if (sendMail?.data?.result?.status === "success") {
+  //     setMailStatus("success");
+  //     try {
+  //       let data;
+  //       if (
+  //         requestBody &&
+  //         requestSubject &&
+  //         isCustomize
+  //       ) {
+  //         data = {
+  //           RequestBody: htmlReqBody,
+  //           RequestSubject: requestSubject,
+  //           SendMail: true
+  //         };
+  //       } else if (
+  //         tenantMailTemplate?.body &&
+  //         tenantMailTemplate?.subject
+  //       ) {
+  //         data = {
+  //           RequestBody: tenantMailTemplate?.body,
+  //           RequestSubject: tenantMailTemplate?.subject,
+  //           SendMail: true
+  //         };
+  //       } else {
+  //         data = { SendMail: true };
+  //       }
+  //       try {
+  //         await axios.put(
+  //           `${localStorage.getItem(
+  //             "baseUrl"
+  //           )}classes/contracts_Document/${documentId}`,
+  //           data,
+  //           {
+  //             headers: {
+  //               "Content-Type": "application/json",
+  //               "X-Parse-Application-Id": localStorage.getItem("parseAppId"),
+  //               "X-Parse-Session-Token": localStorage.getItem("accesstoken")
+  //             }
+  //           }
+  //         );
+  //       } catch (err) {
+  //         console.log("axois err ", err);
+  //       }
+  //     } catch (e) {
+  //       console.log("error", e);
+  //     }
+  //     setIsSend(true);
+  //     setIsMailSend(true);
+  //     setIsLoading({ isLoad: false });
+  //     setIsUiLoading(false);
+  //   } else if (sendMail?.data?.result?.status === "quota-reached") {
+  //     setMailStatus("quotareached");
+  //     setIsSend(true);
+  //     setIsMailSend(true);
+  //     setIsUiLoading(false);
+  //   } else {
+  //     setMailStatus("failed");
+  //     setIsSend(true);
+  //     setIsMailSend(true);
+  //     setIsUiLoading(false);
+  //   }
+  // };
 
   return (
     <div className="relative">
@@ -216,9 +439,9 @@ const DocumentSignPending = () => {
             <table className="op-table border-collapse w-full">
               <thead className="text-[14px]">
                 <tr className="border-y-[1px]">
-                  {heading?.map((item, index) => (
+                  {heading?.map((itemHeader, index) => (
                     <th key={index} className="px-4 py-2">
-                      {t(`report-heading.${item}`)}
+                      {t(`report-heading.${itemHeader}`)}
                     </th>
                   ))}
                 </tr>
@@ -234,8 +457,8 @@ const DocumentSignPending = () => {
                         <td className="px-4 py-2 ">
                           {item?.Description || "-"}
                         </td>
-                        <td className="px-4 py-2 ">     
-                          {item?.ownerUserName } (
+                        <td className="px-4 py-2 ">
+                          {item?.ownerUserName} (
                           {item?.ownerUserEmail})
                         </td>
                         <td className="px-4 py-2">
@@ -262,11 +485,40 @@ const DocumentSignPending = () => {
                               className="op-btn-primary op-btn op-btn-sm mr-1">
                               <i className="fas fa-check"></i>
                             </div>
-                            <div role="button" title="Reject" onClick={() => handleApproveDocumentSign(item, 'Rejected')}
+                            <div role="button" title="Reject"
+                              onClick={() => handleRejectDocumentClick()}
                               className="op-btn-secondary op-btn op-btn-sm mr-1">
                               <i className="fas fa-ban"></i>
                             </div>
                           </div>
+                          {isRejectSignModal && (
+                            <ModalUi
+                              isOpen
+                              title='Reject Document'
+                              handleClose={() => handleClose()}
+                            >
+                              <div className="m-[20px]">
+                                <div className="text-lg font-normal text-black">
+                                  Are you sure you want to reject document {item.Name}?
+                                </div>
+                                <hr className="bg-[#ccc] mt-4 " />
+                                <div className="flex items-center mt-3 gap-2 text-white">
+                                  <button
+                                    onClick={() => handleApproveDocumentSign(item, 'Rejected')}
+                                    className="op-btn op-btn-primary"
+                                  >
+                                    {t("yes")}
+                                  </button>
+                                  <button
+                                    onClick={() => handleClose()}
+                                    className="op-btn op-btn-secondary"
+                                  >
+                                    {t("no")}
+                                  </button>
+                                </div>
+                              </div>
+                            </ModalUi>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -324,7 +576,7 @@ const DocumentSignPending = () => {
             </div>
           )}
         </div>
-      )}  
+      )}
     </div>
   );
 };

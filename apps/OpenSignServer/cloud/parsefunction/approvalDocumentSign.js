@@ -1,6 +1,6 @@
 
 async function saveDocumentSignApprover({ documentId, approvers }) {
-  try {   
+  try {
     // Check if documentId is provided
     if (!documentId) {
       throw new Error('Document ID is missing or invalid.');
@@ -34,7 +34,7 @@ async function saveDocumentSignApprover({ documentId, approvers }) {
 
     // Save the updated document
     await document.save(null, { useMasterKey: true });
-    return 'Document Sign Approvers Updated'; 
+    return 'Document Sign Approvers Updated';
   } catch (error) {
     console.error('Error saving document:', error);
     throw new Error('Error saving document: ' + error.message);  // Propagate error
@@ -44,23 +44,23 @@ async function saveDocumentSignApprover({ documentId, approvers }) {
 async function getDocumentsByApproverId(approveIdData) {
   try {
     // This is _User table id
-    const approverUserId = approveIdData.params.approverId;  
+    const approverUserId = approveIdData.params.approverId;
     // Get Contracts_Users table id
     const getapproverContracts_Users_IdQuery = new Parse.Query('contracts_Users');
     getapproverContracts_Users_IdQuery.equalTo('UserId', { __type: 'Pointer', className: '_User', objectId: approverUserId });
-    const approverContract_UsersIdData = await getapproverContracts_Users_IdQuery.first({ useMasterKey: true });  
-    const approverContracts_Users_Id = approverContract_UsersIdData.id  
+    const approverContract_UsersIdData = await getapproverContracts_Users_IdQuery.first({ useMasterKey: true });
+    const approverContracts_Users_Id = approverContract_UsersIdData.id
     const whichDocumentSignApprovalFlag = approveIdData.params.documentSignApprovalFlag;
 
     let query = new Parse.Query('contracts_Document');
-    query.select('Name', 'Description', 'Signers', 'Approvers', 'DocSentAt','URL','SignedUrl','CreatedBy','_id');  // Only fetch these columns
+    query.select('Name', 'Description', 'Signers', 'Approvers', 'DocSentAt', 'URL', 'SignedUrl', 'CreatedBy', '_id');  // Only fetch these columns
     query.notEqualTo('IsDeclined', true);
     query.notEqualTo('IsArchive', true);
     query.descending('DocSentAt');
 
     const results = await query.find({ useMasterKey: true });
     const filteredResults = results.filter((document) => {
-      const approvers = document.get('Approvers');  
+      const approvers = document.get('Approvers');
       if (Array.isArray(approvers)) {
         return approvers.some((approver) => {
           return approver.contracts_Users_Id === approverContracts_Users_Id && approver.HasApproved === whichDocumentSignApprovalFlag;
@@ -73,62 +73,62 @@ async function getDocumentsByApproverId(approveIdData) {
 
     const processedDocuments = await Promise.all(documents.map(async (document) => {
 
-    // get approver Email Ids  
-    const approvers = document.get('Approvers') || [];
-    const approverEmails = await Promise.all(approvers.map(async (approver) => {
-    const userId = approver.contracts_Users_Id;
-    const approverQuery = new Parse.Query('contracts_Users');
-    approverQuery.equalTo('objectId', userId);
-    const approverUser = await approverQuery.first({ useMasterKey: true });
-    if (approverUser) {
-      return approverUser.get('Email');
-    }
-    return null;
-    }));
-    
-    // get signers email id
-    const signers = document.get('Signers') || [];
-    const SignerEmails = await Promise.all(signers.map(async (signer) => {
-    const signerUserId = signer.id;
-    if (!signerUserId) {          
-      return null;
-    }
-    const signerQuery = new Parse.Query('contracts_Contactbook');
-    signerQuery.equalTo('objectId', signerUserId);
-    const signerUser = await signerQuery.first({ useMasterKey: true })
-    if (signerUser) {
-      return signerUser.get('Email');
-    }
-    return null;
-    }));
+      // get approver Email Ids  
+      const approvers = document.get('Approvers') || [];
+      const approverEmails = await Promise.all(approvers.map(async (approver) => {
+        const userId = approver.contracts_Users_Id;
+        const approverQuery = new Parse.Query('contracts_Users');
+        approverQuery.equalTo('objectId', userId);
+        const approverUser = await approverQuery.first({ useMasterKey: true });
+        if (approverUser) {
+          return approverUser.get('Email');
+        }
+        return null;
+      }));
 
-    // get the owner name 
-    let CreatedById=document.get('CreatedBy').id;
-    const userTableQuery = new Parse.Query('_User');
-    userTableQuery.equalTo('objectId', CreatedById);
-    userTableQuery.select('name','email');
-    const user = await userTableQuery.first({ useMasterKey: true });
-    let ownerUserName='';
-    let ownerUserEmail='';
-    if (user) {
-      ownerUserName= user.get('name');     
-      ownerUserEmail= user.get('email');
-    }
+      // get signers email id
+      const signers = document.get('Signers') || [];
+      const SignerEmails = await Promise.all(signers.map(async (signer) => {
+        const signerUserId = signer.id;
+        if (!signerUserId) {
+          return null;
+        }
+        const signerQuery = new Parse.Query('contracts_Contactbook');
+        signerQuery.equalTo('objectId', signerUserId);
+        const signerUser = await signerQuery.first({ useMasterKey: true })
+        if (signerUser) {
+          return signerUser.get('Email');
+        }
+        return null;
+      }));
 
-    return {
-      Name: document.get('Name'),
-      Description: document.get('Description'),
-      Signers: document.get('Signers'),
-      Approvers: document.get('Approvers'),
-      SignersEmail: SignerEmails,
-      ApproversEmail: approverEmails,
-      DocSentAt: document.get('DocSentAt'),
-      URL: document.get('URL'),
-      SignedUrl:document.get('SignedUrl'),
-      ownerUserName:ownerUserName,
-      ownerUserEmail:ownerUserEmail,
-      DocumentId: document.id,
-    };
+      // get the owner name 
+      let CreatedById = document.get('CreatedBy').id;
+      const userTableQuery = new Parse.Query('_User');
+      userTableQuery.equalTo('objectId', CreatedById);
+      userTableQuery.select('name', 'email');
+      const user = await userTableQuery.first({ useMasterKey: true });
+      let ownerUserName = '';
+      let ownerUserEmail = '';
+      if (user) {
+        ownerUserName = user.get('name');
+        ownerUserEmail = user.get('email');
+      }
+
+      return {
+        Name: document.get('Name'),
+        Description: document.get('Description'),
+        Signers: document.get('Signers'),
+        Approvers: document.get('Approvers'),
+        SignersEmail: SignerEmails,
+        ApproversEmail: approverEmails,
+        DocSentAt: document.get('DocSentAt'),
+        URL: document.get('URL'),
+        SignedUrl: document.get('SignedUrl'),
+        ownerUserName: ownerUserName,
+        ownerUserEmail: ownerUserEmail,
+        DocumentId: document.id,
+      };
 
     }));
 
@@ -185,7 +185,7 @@ async function getApprovers(request) {
 
 
 async function approveRejectDocumentSign(approveRejectData) {
-  try {        
+  try {
     const documentId = approveRejectData.params.documentId;
     const approvedorrejected = approveRejectData.params.approvedorrejected;
     // This is _User table id
@@ -198,7 +198,9 @@ async function approveRejectDocumentSign(approveRejectData) {
 
     // Query to fetch the existing document based on documentId
     const query = new Parse.Query('contracts_Document');
-    const document = await query.get(documentId, { useMasterKey: true });
+    query.equalTo('objectId', documentId);
+    query.select('Approvers');
+    const document = await query.first({ useMasterKey: true });
     // Ensure document was found
     if (!document) {
       throw new Error(`Document with ID ${documentId} not found.`);
@@ -209,7 +211,7 @@ async function approveRejectDocumentSign(approveRejectData) {
     currentApprovers.forEach(approver => {
       if (approver.contracts_Users_Id == approverContracts_Users_Id) {
         approver.HasApproved = approvedorrejected;
-        approver.ApprovedOn = new Date();
+        approver.ApprovedRejectedOn = new Date();
       }
     });
 
@@ -226,6 +228,35 @@ async function approveRejectDocumentSign(approveRejectData) {
 
 }
 
-export default { saveDocumentSignApprover, getApprovers, getDocumentsByApproverId,approveRejectDocumentSign };
+async function hasAllApproverApproved(documentData) {
+  try {
+    const documentId = documentData.params.documentId;
+    if (!documentId) {
+      throw new Error('Document ID is missing or invalid.');
+    }
+
+    // Query to fetch the existing document based on documentId
+    const query = new Parse.Query('contracts_Document');
+    query.equalTo('objectId', documentId);
+    query.select('Approvers');
+    const document = await query.first({ useMasterKey: true });
+
+    // Ensure document was found
+    if (!document) {
+      throw new Error(`Document with ID ${documentId} not found.`);
+    }
+
+    // Get the current approvers, or initialize an empty array if none exist
+    const currentApprovers = document.get('Approvers') || [];
+    let hasAllApproved = currentApprovers.every(x => x.HasApproved === 'Approved');
+    return hasAllApproved;
+    
+  } catch (err) {
+    console.log('err getting all approver approved status', err);
+    throw err;
+  }
+}
+
+export default { saveDocumentSignApprover, getApprovers, getDocumentsByApproverId, approveRejectDocumentSign, hasAllApproverApproved };
 
 

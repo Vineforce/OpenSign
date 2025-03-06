@@ -57,7 +57,7 @@ import additionalDocumentOperation from './parsefunction/additionalDocumentOpera
 const {saveAdditionalDocument,removeDocument,getAdditionalDocumentByDocumentId}=additionalDocumentOperation;
 
 import documentSignApprover from './parsefunction/approvalDocumentSign.js';
-const {saveDocumentSignApprover, getApprovers, getDocumentsByApproverId,approveRejectDocumentSign}=documentSignApprover;
+const {saveDocumentSignApprover, getApprovers, getDocumentsByApproverId,approveRejectDocumentSign,hasAllApproverApproved}=documentSignApprover;
 
 import sendMailDocumentApproval from './parsefunction/sendMailDocumentApproval.js';
 
@@ -139,3 +139,4 @@ Parse.Cloud.define('getDocumentsByApproverId', getDocumentsByApproverId);
 Parse.Cloud.define('getApprovers',getApprovers); 
 Parse.Cloud.define('sendMailDocumentApproval',sendMailDocumentApproval); 
 Parse.Cloud.define('approveRejectDocumentSign',approveRejectDocumentSign);
+Parse.Cloud.define('hasAllApproverApproved',hasAllApproverApproved);

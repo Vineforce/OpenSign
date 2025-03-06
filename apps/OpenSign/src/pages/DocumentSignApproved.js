@@ -15,7 +15,6 @@ const heading = ["Name", "Description", "Owner", "Signers", "Approvers"];
 const DocumentSignApproved = () => {
   const [SignApproved, setSignPending] = useState([]);
   const [isLoader, setIsLoader] = useState(false);
-  const [isAlert, setIsAlert] = useState(false);
   const [isAlertMessage, setIsAlertMessage] = useState({ type: "success", msg: "" });
 
   const { t } = useTranslation();
@@ -44,7 +43,6 @@ const DocumentSignApproved = () => {
       setIsLoader(false);
     } catch (error) {
       console.error(error); 
-      setIsAlert(true);
       setIsAlertMessage({ type: "danger", msg: t("something-went-wrong-mssg") });
       setIsLoader(false);
     }
