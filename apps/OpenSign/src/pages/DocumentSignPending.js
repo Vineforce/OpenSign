@@ -8,7 +8,6 @@ import Title from "../components/Title";
 import Alert from "../primitives/Alert";
 import Tooltip from "../primitives/Tooltip";
 import {fetchUrl, getSignedUrl} from "../constant/Utils";
-import ModalUi from "../primitives/ModalUi";
 
 
 const heading = ["Name", "Description", "Owner", "Signers", "Approvers"];
@@ -16,7 +15,8 @@ const heading = ["Name", "Description", "Owner", "Signers", "Approvers"];
 const DocumentSignPending = () => {
   const [SignPending, setSignPending] = useState([]);
   const [isLoader, setIsLoader] = useState(false);
-  const [isAlert, setIsAlert] = useState({ type: "success", msg: "" });
+  const [isAlert, setIsAlert] = useState(false);
+  const [isAlertMessage, setIsAlertMessage] = useState({ type: "success", msg: "" });
 
   const { t } = useTranslation();
   const location = useLocation();
@@ -38,15 +38,14 @@ const DocumentSignPending = () => {
   const fetchDocumentsByApproverId = async (approverId) => {
     try {
       setIsLoader(true);
-      //--alert(566);
       const params = { approverId: approverId, documentSignApprovalFlag: 'ApprovalPending' }
       const documents = await Parse.Cloud.run('getDocumentsByApproverId', params);
-      console.log(documents); // Handle the documents returned by the query
       setSignPending(documents);
       setIsLoader(false);
     } catch (error) {
-      console.error(error); // Handle any errors
-      setIsAlert({ type: "danger", msg: t("something-went-wrong-mssg") });
+      console.error(error); 
+      setIsAlert(true);
+      setIsAlertMessage({ type: "danger", msg: t("something-went-wrong-mssg") });
       setIsLoader(false);
     }
   };
@@ -174,6 +173,24 @@ const DocumentSignPending = () => {
      }
    };
 
+  const handleApproveDocumentSign = async (item, approveReject) => {
+    try {
+        const params = { approverUserId: currentUser.id,documentId:item.DocumentId, approvedorrejected: approveReject }      
+        const approveRejectStatus = await Parse.Cloud.run('approveRejectDocumentSign',params);
+        if (approveRejectStatus) {
+          setIsAlert(true);
+          setIsAlertMessage({ type: "success", msg: approveReject=='Approved'?'Document Sign Approved':'Document Sign Rejected' }); 
+          setTimeout(() => {
+            setIsAlertMessage({ type: "danger", msg: '' });
+            setIsAlert(false);
+            fetchDocumentsByApproverId(currentUser.id);
+          }, 1500); 
+        }
+    } catch (error) {
+        console.error(error); // Handle any errors
+    }
+  };
+
   return (
     <div className="relative">
       <Title title="Document Approval Pending" />
@@ -181,12 +198,11 @@ const DocumentSignPending = () => {
         <div className="absolute w-full h-[300px] md:h-[400px] flex justify-center items-center z-30 rounded-box">
           <Loader />
         </div>
-
       )}
       {!isLoader && (
         <div className="p-2 w-full bg-base-100 text-base-content op-card shadow-lg">
-          {isAlert.msg && (
-            <Alert type={isAlert.type}>{isAlert.msg}</Alert>
+          {isAlertMessage.msg && (
+            <Alert type={isAlertMessage.type}>{isAlertMessage.msg}</Alert>
           )}
           <div className="flex flex-row items-center justify-between my-2 mx-3 text-[20px] md:text-[23px]">
             <div className="font-light">
@@ -218,8 +234,9 @@ const DocumentSignPending = () => {
                         <td className="px-4 py-2 ">
                           {item?.Description || "-"}
                         </td>
-                        <td className="px-4 py-2 ">
-                          Owner
+                        <td className="px-4 py-2 ">     
+                          {item?.ownerUserName } (
+                          {item?.ownerUserEmail})
                         </td>
                         <td className="px-4 py-2">
                           {item?.SignersEmail?.map((email, index) => (
@@ -241,10 +258,12 @@ const DocumentSignPending = () => {
                         </td>
                         <td className="px-2 py-2">
                           <div className="text-base-content min-w-max flex flex-row gap-x-2 gap-y-1 justify-start items-center">
-                            <div role="button" title="Approve" className="op-btn-primary op-btn op-btn-sm mr-1">
+                            <div role="button" title="Approve" onClick={() => handleApproveDocumentSign(item, 'Approved')}
+                              className="op-btn-primary op-btn op-btn-sm mr-1">
                               <i className="fas fa-check"></i>
                             </div>
-                            <div role="button" title="Reject" className="op-btn-secondary op-btn op-btn-sm mr-1">
+                            <div role="button" title="Reject" onClick={() => handleApproveDocumentSign(item, 'Rejected')}
+                              className="op-btn-secondary op-btn op-btn-sm mr-1">
                               <i className="fas fa-ban"></i>
                             </div>
                           </div>
@@ -305,24 +324,7 @@ const DocumentSignPending = () => {
             </div>
           )}
         </div>
-      )}
-      {SignPending?.length <= 0 && (
-        <div
-          className={`${isDashboard ? "h-[317px]" : ""
-            } flex flex-col items-center justify-center w-ful bg-base-100 text-base-content rounded-xl py-4`}
-        >
-          <div className="w-[60px] h-[60px] overflow-hidden">
-            <img
-              className="w-full h-full object-contain"
-              src={pad}
-              alt="img"
-            />
-          </div>
-          <div className="text-sm font-semibold">
-            {t("no-data-avaliable")}
-          </div>
-        </div>
-      )}
+      )}  
     </div>
   );
 };

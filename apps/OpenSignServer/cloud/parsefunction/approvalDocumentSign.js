@@ -1,8 +1,6 @@
 
 async function saveDocumentSignApprover({ documentId, approvers }) {
-  try {
-    console.log('Document ID:', documentId);
-
+  try {   
     // Check if documentId is provided
     if (!documentId) {
       throw new Error('Document ID is missing or invalid.');
@@ -24,13 +22,9 @@ async function saveDocumentSignApprover({ documentId, approvers }) {
     approvers.forEach(approver => {
       // Construct the approver object with both the Pointer and IsApproved field
       const approverObject = {
-        approverId: approver.id,  // Assuming approver.id is the user ID
-        IsApproved: false  // This is the custom field in contracts_Document
+        contracts_Users_Id: approver.id,  // Assuming approver.id is the user ID
+        HasApproved: 'ApprovalPending'  // This is the custom field in contracts_Document
       };
-
-      // Log the approver object before adding it to the Approvers array
-      console.log('Adding Approver:', approverObject);
-
       // Push the approver object to the currentApprovers array
       currentApprovers.push(approverObject);
     });
@@ -40,44 +34,42 @@ async function saveDocumentSignApprover({ documentId, approvers }) {
 
     // Save the updated document
     await document.save(null, { useMasterKey: true });
-
-    console.log('Document Sign Approvers Updated');
-    return 'Document Sign Approvers Updated';  // Success message
+    return 'Document Sign Approvers Updated'; 
   } catch (error) {
     console.error('Error saving document:', error);
     throw new Error('Error saving document: ' + error.message);  // Propagate error
   }
 }
 
-
-//query.equalTo('Approvers.objectId', approverId);
-//query.equalTo('Approvers.HasApproved',whichDocumentSignApprovalFlag);
-// query.contains('Approvers', { 
-//   objectId: approverId,
-//   HasApproved: whichDocumentSignApprovalFlag
-// });
-//query.equalTo('Approvers.objectId', approverId);
-//query.equalTo('Approvers.HasApproved', whichDocumentSignApprovalFlag);
-
-
 async function getDocumentsByApproverId(approveIdData) {
-  // This is _User table id
-  const approverUserId = approveIdData.params.approverId;  
-  // Get Contracts_Users table id
-  const getapproverContracts_Users_IdQuery = new Parse.Query('contracts_Users');
-  getapproverContracts_Users_IdQuery.equalTo('UserId', { __type: 'Pointer', className: '_User', objectId: approverUserId });
-  const approverContract_UsersIdData = await getapproverContracts_Users_IdQuery.first({ useMasterKey: true });  
-  const approverContracts_Users_Id = approverContract_UsersIdData.id  
-  const whichDocumentSignApprovalFlag = approveIdData.params.documentSignApprovalFlag;
-
-  let query = new Parse.Query('contracts_Document');
-  query.select('Name', 'Description', 'Signers', 'Approvers', 'DocSentAt','URL','SignedUrl','CreatedBy');  // Only fetch these columns
-  query.notEqualTo('IsDeclined', true);
-  query.notEqualTo('IsArchive', true);
-  query.descending('DocSentAt');
-
   try {
-    const documents = await query.find({ useMasterKey: true });
+    // This is _User table id
+    const approverUserId = approveIdData.params.approverId;  
+    // Get Contracts_Users table id
+    const getapproverContracts_Users_IdQuery = new Parse.Query('contracts_Users');
+    getapproverContracts_Users_IdQuery.equalTo('UserId', { __type: 'Pointer', className: '_User', objectId: approverUserId });
+    const approverContract_UsersIdData = await getapproverContracts_Users_IdQuery.first({ useMasterKey: true });  
+    const approverContracts_Users_Id = approverContract_UsersIdData.id  
+    const whichDocumentSignApprovalFlag = approveIdData.params.documentSignApprovalFlag;
+
+    let query = new Parse.Query('contracts_Document');
+    query.select('Name', 'Description', 'Signers', 'Approvers', 'DocSentAt','URL','SignedUrl','CreatedBy','_id');  // Only fetch these columns
+    query.notEqualTo('IsDeclined', true);
+    query.notEqualTo('IsArchive', true);
+    query.descending('DocSentAt');
+
+    const results = await query.find({ useMasterKey: true });
+    const filteredResults = results.filter((document) => {
+      const approvers = document.get('Approvers');  
+      if (Array.isArray(approvers)) {
+        return approvers.some((approver) => {
+          return approver.contracts_Users_Id === approverContracts_Users_Id && approver.HasApproved === whichDocumentSignApprovalFlag;
+        });
+      }
+      return false;
+    });
+
+    const documents = filteredResults;// await query.find({ useMasterKey: true });
 
     const processedDocuments = await Promise.all(documents.map(async (document) => {
 
@@ -135,6 +127,7 @@ async function getDocumentsByApproverId(approveIdData) {
       SignedUrl:document.get('SignedUrl'),
       ownerUserName:ownerUserName,
       ownerUserEmail:ownerUserEmail,
+      DocumentId: document.id,
     };
 
     }));
@@ -190,6 +183,49 @@ async function getApprovers(request) {
 
 }
 
-export default { saveDocumentSignApprover, getApprovers, getDocumentsByApproverId };
+
+async function approveRejectDocumentSign(approveRejectData) {
+  try {        
+    const documentId = approveRejectData.params.documentId;
+    const approvedorrejected = approveRejectData.params.approvedorrejected;
+    // This is _User table id
+    const approverUserId = approveRejectData.params.approverUserId;
+    // Get Contracts_Users table id
+    const getapproverContracts_Users_IdQuery = new Parse.Query('contracts_Users');
+    getapproverContracts_Users_IdQuery.equalTo('UserId', { __type: 'Pointer', className: '_User', objectId: approverUserId });
+    const approverContract_UsersIdData = await getapproverContracts_Users_IdQuery.first({ useMasterKey: true });
+    const approverContracts_Users_Id = approverContract_UsersIdData.id
+
+    // Query to fetch the existing document based on documentId
+    const query = new Parse.Query('contracts_Document');
+    const document = await query.get(documentId, { useMasterKey: true });
+    // Ensure document was found
+    if (!document) {
+      throw new Error(`Document with ID ${documentId} not found.`);
+    }
+
+    // Get the current approvers, or initialize an empty array if none exist
+    const currentApprovers = document.get('Approvers') || [];
+    currentApprovers.forEach(approver => {
+      if (approver.contracts_Users_Id == approverContracts_Users_Id) {
+        approver.HasApproved = approvedorrejected;
+        approver.ApprovedOn = new Date();
+      }
+    });
+
+    // Update the Approvers field with the new approvers data
+    document.set('Approvers', currentApprovers);
+    // Save the updated document
+    await document.save(null, { useMasterKey: true });
+    return true;
+
+  } catch (err) {
+    console.log('err while updating approve reject status', err);
+    throw err;
+  }
+
+}
+
+export default { saveDocumentSignApprover, getApprovers, getDocumentsByApproverId,approveRejectDocumentSign };
 
 
