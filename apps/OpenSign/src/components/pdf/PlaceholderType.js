@@ -421,7 +421,6 @@ function PlaceholderType(props) {
         (props.isSelfSign && props.data?.signerObjId === props.signerObjId) ||
         (props.isNeedSign && props.data?.signerObjId === props.signerObjId) ? (
         <textarea
-          readOnly='true'
           ref={inputRef}
           placeholder={validatePlaceholder || t("widgets-name.text")}
           rows={1}
@@ -548,7 +547,6 @@ function PlaceholderType(props) {
         (props.isSelfSign && props.data?.signerObjId === props.signerObjId) ||
         (props.isNeedSign && props.data?.signerObjId === props.signerObjId) ? (
         <textarea
-          readOnly='true'
           ref={inputRef}
           placeholder={t("widgets-name.name")}
           rows={1}
@@ -581,7 +579,6 @@ function PlaceholderType(props) {
         (props.isSelfSign && props.data?.signerObjId === props.signerObjId) ||
         (props.isNeedSign && props.data?.signerObjId === props.signerObjId) ? (
         <textarea
-          readOnly='true'
           ref={inputRef}
           placeholder={t("widgets-name.company")}
           rows={1}
@@ -613,7 +610,6 @@ function PlaceholderType(props) {
         (props.isSelfSign && props.data?.signerObjId === props.signerObjId) ||
         (props.isNeedSign && props.data?.signerObjId === props.signerObjId) ? (
         <textarea
-          readOnly='true'
           ref={inputRef}
           placeholder={t("widgets-name.job title")}
           rows={1}
@@ -730,7 +726,6 @@ function PlaceholderType(props) {
         (props.isSelfSign && props.data?.signerObjId === props.signerObjId) ||
         (props.isNeedSign && props.data?.signerObjId === props.signerObjId) ? (
         <textarea
-          readOnly='true'
           ref={inputRef}
           placeholder={t("widgets-name.email")}
           rows={1}
