@@ -457,11 +457,6 @@ const Forms = (props) => {
           });
           setFileUpload("");
           setpercentage(0);
-          //await saveDocumentSignApprover(res.id);
-          // Example usage:
-          //const approverId = "approverUserId1"; // Pass the approver ID you are looking for
-          //await fetchDocumentsByApproverId(approverId);
-          //await SendDocumentApprovalEmail(res.id);
           navigate(`/${props?.redirectRoute}/${res.id}`);
         }
       } catch (err) {
@@ -475,52 +470,7 @@ const Forms = (props) => {
       alert(t("file-alert-3"));
     }
   };
-  //---------------
-
   
-  const saveDocumentSignApprover = async (docId) => {
-    try {
-      // Example data - replace with actual data
-      const documentSignApproverData = {
-        documentId: docId,  // The existing document ID to update
-        approvers: [
-          { id: 'approverUserId1' },
-          { id: 'approverUserId2' },
-          // Add more approvers as needed
-        ]
-      };
-  
-      // Call the cloud function and pass the documentSignApproverData
-      const response = await Parse.Cloud.run('saveDocumentSignApprover', documentSignApproverData);
-  
-      console.log('Cloud function response:', response);  // Handle the success response
-    } catch (error) {
-      console.error('Error saving document:', error);  // Handle error
-    }
-  };
-  
-  //send doc Approval Email function
-  const SendDocumentApprovalEmail = async (documentId) => { 
-    try {
-      const params = { docId: documentId };
-      const docApprovalEmail = await Parse.Cloud.run("sendMailDocumentApproval", params);      
-    } catch (error) {
-      alert(t("something-went-wrong-mssg"));
-    }
-  };
-
-  
-  const fetchDocumentsByApproverId = async (approverId) => {
-    try {
-      alert(566);
-        const documents = await Parse.Cloud.run('getDocumentsByApproverId',{approverId});
-        console.log(documents); // Handle the documents returned by the query
-    } catch (error) {
-        console.error(error); // Handle any errors
-    }
-  };  
-
-  //---------------------
   const handleFolder = (data) => {
     setFolder(data);
   };
@@ -863,7 +813,7 @@ const Forms = (props) => {
                 onChange={handleApprovers}
                 isReset={isReset}
                 helptextZindex={50}
-                required
+                // required Uncomment if you want Approver mandatory
               />
             )}
             <div className="text-xs mt-2">

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Parse from "parse";
+import axios from "axios";
 import { useLocation } from "react-router";
 import pad from "../assets/images/pad.svg";
 import { useTranslation } from "react-i18next";
@@ -8,7 +9,8 @@ import Title from "../components/Title";
 import Alert from "../primitives/Alert";
 import Tooltip from "../primitives/Tooltip";
 import ModalUi from "../primitives/ModalUi";
-import { fetchUrl, getSignedUrl } from "../constant/Utils";
+import { fetchUrl, getSignedUrl, replaceMailVaribles, mailTemplate, contractDocument, signatureTypes, handleSignatureType, getTenantDetails } from "../constant/Utils";
+
 
 
 const heading = ["Name", "Description", "Owner", "Signers", "Approvers"];
@@ -19,13 +21,18 @@ const DocumentSignPending = () => {
   const [isAlertMessage, setIsAlertMessage] = useState({ type: "success", msg: "" });
   const [isRejectSignModal, setIsRejectSignModal] = useState(false);
 
-  //-----  Send Email to Signers started ---
-const [pdfDetails, setPdfDetails] = useState([]);
-  //------ Send Email to Signers ended -----
-
   const { t } = useTranslation();
   const location = useLocation();
   const isDashboard = location?.pathname === "/dashboard/35KBoSgoAK" ? true : false;
+
+  //-----  Send Email to Signers started ---
+  const [tenantMailTemplate, setTenantMailTemplate] = useState({ body: "", subject: "" });
+  const [isUiLoading, setIsUiLoading] = useState(false);
+  let isMailSent = false;
+  const appName = 'Excis';
+  //------ Send Email to Signers ended -----
+
+
 
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -37,7 +44,7 @@ const [pdfDetails, setPdfDetails] = useState([]);
   const currentUser = Parse.User.current();
 
   useEffect(() => {
-    fetchDocumentsByApproverId(currentUser.id);   
+    fetchDocumentsByApproverId(currentUser.id);
   }, []);
 
   const fetchDocumentsByApproverId = async (approverId) => {
@@ -180,22 +187,35 @@ const [pdfDetails, setPdfDetails] = useState([]);
   const handleApproveDocumentSign = async (item, approveReject) => {
     try {
       const params = { approverUserId: currentUser.id, documentId: item.DocumentId, approvedorrejected: approveReject }
-      const approveRejectStatus = await Parse.Cloud.run('approveRejectDocumentSign', params);  
-      // check if all approver(s) has approved then send email to Signers  
-      hasAllApproverApproved(item.DocumentId)
-      .then(() => {
-        if (approveRejectStatus) {
-          setIsAlertMessage({ type: "success", msg: approveReject == 'Approved' ? 'Document Sign Approved' : 'Document Sign Rejected' });
+      const approveRejectStatus = await Parse.Cloud.run('approveRejectDocumentSign', params);
+      if (approveRejectStatus) {
+        if (approveReject === 'Approved') {
+          // check if all approver(s) has approved then send email to Signers 
+          hasAllApproverApproved(item.DocumentId)
+            .then(() => {
+              setIsAlertMessage({ type: "success", msg: isMailSent ? 'Document Sign Approved and Email Sent to Signer' : 'Document Sign Approved' });
+              setTimeout(() => {
+                setIsAlertMessage({ type: "danger", msg: '' });
+                fetchDocumentsByApproverId(currentUser.id);
+                isMailSent=false;
+              }, 1500);
+            })
+            .catch((error) => {
+              console.error('Error approving document:', error);
+            });
+        }
+        else {
+          setIsAlertMessage({ type: "success", msg: 'Document Sign Rejected' });
           setTimeout(() => {
             setIsAlertMessage({ type: "danger", msg: '' });
             fetchDocumentsByApproverId(currentUser.id);
           }, 1500);
         }
-      })
-      .catch((error) => {
-        console.error('Error approving document:', error);
-      });
-     
+      }
+      else {
+        setIsAlertMessage({ type: "danger", msg: t("something-went-wrong-mssg") });
+        setIsLoader(false);
+      }
     } catch (error) {
       console.error(error); // Handle any errors
     }
@@ -215,204 +235,257 @@ const [pdfDetails, setPdfDetails] = useState([]);
       const allApproverApprovedStatus = await Parse.Cloud.run('hasAllApproverApproved', params);
       if (allApproverApprovedStatus) {
         // write the code to handle email and further process
-        sendEmailToSigners();
+        let dataForSendingEmail = await setEmailData(docId);
+        await sendEmailToSigners(docId, dataForSendingEmail);
       }
     } catch (error) {
-      console.error(error); 
+      console.error(error);
     }
   };
 
+  const setEmailData = async (documentId) => {
+    const data = {};
+    const tenantSignTypes = await fetchTenantDetails();
+    const documentData = await contractDocument(documentId);
+    const userSignatureType = documentData[0]?.ExtUserPtr?.SignatureType || signatureTypes;
+    const docSignTypes = documentData?.[0]?.SignatureType || userSignatureType;
+    const updatedSignatureType = await handleSignatureType(tenantSignTypes, docSignTypes);
+    data.signatureType = updatedSignatureType;
 
-  // const sendEmailToSigners = async () => {
-  //   let htmlReqBody;
-  //   setIsUiLoading(true);
-  //   setIsSendAlert({});
-  //   let sendMail;
-  //   const expireDate = pdfDetails?.[0].ExpiryDate.iso;
-  //   const newDate = new Date(expireDate);
-  //   const localExpireDate = newDate.toLocaleDateString("en-US", {
-  //     day: "numeric",
-  //     month: "long",
-  //     year: "numeric"
-  //   });
+    const updatedPdfDetails = [...documentData];
+    updatedPdfDetails[0].SignatureType = updatedSignatureType;
+    data.pdfDetails = updatedPdfDetails;
 
-  //   let senderEmail =
-  //     pdfDetails?.[0]?.ExtUserPtr?.Email;
-  //   let senderPhone = pdfDetails?.[0]?.ExtUserPtr?.Phone;
-  //   let signerMail = signersdata.slice();
 
-  //   if (pdfDetails?.[0]?.SendinOrder && pdfDetails?.[0]?.SendinOrder === true) {
-  //     signerMail.splice(1);
-  //   }
+    const signersArr = documentData[0].Signers;
+    const placeholder = documentData[0].Placeholders;
+    const updatedSigners = signersArr.map((x, index) => ({
+      ...x,
+      Id: placeholder[index]?.Id,
+      Role: placeholder[index]?.Role,
+      blockColor: placeholder[index]?.blockColor
+    }));
+    data.signers = updatedSigners;
 
-  //   for (let i = 0; i < signerMail.length; i++) {
-  //     try {
-  //       const imgPng =
-  //         "https://www.excis.com/assets/images/main-logo.png";        
-  //       let url = `${localStorage.getItem("baseUrl")}functions/sendmailv3`;
-  //       const headers = {
-  //         "Content-Type": "application/json",
-  //         "X-Parse-Application-Id": localStorage.getItem("parseAppId"),
-  //         sessionToken: localStorage.getItem("accesstoken")
-  //       };
-  //       const objectId = signerMail[i].objectId;
-  //       const hostUrl = window.location.origin;
-  //       //encode this url value `${pdfDetails?.[0].objectId}/${signerMail[i].Email}/${objectId}` to base64 using `btoa` function
-  //       const encodeBase64 = btoa(
-  //         `${pdfDetails?.[0].objectId}/${signerMail[i].Email}/${objectId}`
-  //       );
-  //       let signPdf = `${hostUrl}/login/${encodeBase64}`;
-  //       const openSignUrl = "https://www.excis.com";
-  //       const orgName = pdfDetails[0]?.ExtUserPtr.Company
-  //         ? pdfDetails[0].ExtUserPtr.Company
-  //         : "";
-  //       const senderName =
-  //         pdfDetails?.[0].ExtUserPtr.Name;
-  //       const documentName = `${pdfDetails?.[0].Name}`;
-  //       let replaceVar;
+    data.extUserId = documentData[0]?.ExtUserPtr?.objectId;
+    return data;
+  };
 
-  //       if (
-  //         requestBody &&
-  //         requestSubject &&
-  //         isCustomize
-  //       ) {
-  //         const replacedRequestBody = requestBody.replace(/"/g, "'");
-  //         htmlReqBody =
-  //           "<html><head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8' /></head><body>" +
-  //           replacedRequestBody +
-  //           "</body> </html>";
 
-  //         const variables = {
-  //           document_title: documentName,
-  //           sender_name: senderName,
-  //           sender_mail: senderEmail,
-  //           sender_phone: senderPhone || "",
-  //           receiver_name: signerMail[i]?.Name || "",
-  //           receiver_email: signerMail[i].Email,
-  //           receiver_phone: signerMail[i]?.Phone || "",
-  //           expiry_date: localExpireDate,
-  //           company_name: orgName,
-  //           signing_url: `<a href=${signPdf} target=_blank>Sign here</a>`
-  //         };
-  //         replaceVar = replaceMailVaribles(
-  //           requestSubject,
-  //           htmlReqBody,
-  //           variables
-  //         );
-  //       } else if (
-  //         tenantMailTemplate?.body &&
-  //         tenantMailTemplate?.subject
-  //       ) {
-  //         const mailBody = tenantMailTemplate?.body;
-  //         const mailSubject = tenantMailTemplate?.subject;
-  //         const replacedRequestBody = mailBody.replace(/"/g, "'");
-  //         const htmlReqBody =
-  //           "<html><head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8' /></head><body>" +
-  //           replacedRequestBody +
-  //           "</body> </html>";
-  //         const variables = {
-  //           document_title: documentName,
-  //           sender_name: senderName,
-  //           sender_mail: senderEmail,
-  //           sender_phone: senderPhone || "",
-  //           receiver_name: signerMail[i]?.Name || "",
-  //           receiver_email: signerMail[i].Email,
-  //           receiver_phone: signerMail[i]?.Phone || "",
-  //           expiry_date: localExpireDate,
-  //           company_name: orgName,
-  //           signing_url: `<a href=${signPdf} target=_blank>Sign here</a>`
-  //         };
-  //         replaceVar = replaceMailVaribles(mailSubject, htmlReqBody, variables);
-  //       }
-  //       const mailparam = {
-  //         senderName: senderName,
-  //         senderMail: senderEmail,
-  //         title: documentName,
-  //         organization: orgName,
-  //         localExpireDate: localExpireDate,
-  //         sigingUrl: signPdf
-  //       };
-  //       let params = {
-  //         extUserId: extUserId,
-  //         recipient: signerMail[i].Email,
-  //         subject: replaceVar?.subject
-  //           ? replaceVar?.subject
-  //           : mailTemplate(mailparam).subject,
-  //         replyto: senderEmail,
-  //         from:
-  //           senderEmail,
-  //         html: replaceVar?.body
-  //           ? replaceVar?.body
-  //           : mailTemplate(mailparam).body
-  //       };
 
-  //       sendMail = await axios.post(url, params, { headers: headers });
-  //     } catch (error) {
-  //       console.log("error", error);
-  //     }
-  //   }
-  //   if (sendMail?.data?.result?.status === "success") {
-  //     setMailStatus("success");
-  //     try {
-  //       let data;
-  //       if (
-  //         requestBody &&
-  //         requestSubject &&
-  //         isCustomize
-  //       ) {
-  //         data = {
-  //           RequestBody: htmlReqBody,
-  //           RequestSubject: requestSubject,
-  //           SendMail: true
-  //         };
-  //       } else if (
-  //         tenantMailTemplate?.body &&
-  //         tenantMailTemplate?.subject
-  //       ) {
-  //         data = {
-  //           RequestBody: tenantMailTemplate?.body,
-  //           RequestSubject: tenantMailTemplate?.subject,
-  //           SendMail: true
-  //         };
-  //       } else {
-  //         data = { SendMail: true };
-  //       }
-  //       try {
-  //         await axios.put(
-  //           `${localStorage.getItem(
-  //             "baseUrl"
-  //           )}classes/contracts_Document/${documentId}`,
-  //           data,
-  //           {
-  //             headers: {
-  //               "Content-Type": "application/json",
-  //               "X-Parse-Application-Id": localStorage.getItem("parseAppId"),
-  //               "X-Parse-Session-Token": localStorage.getItem("accesstoken")
-  //             }
-  //           }
-  //         );
-  //       } catch (err) {
-  //         console.log("axois err ", err);
-  //       }
-  //     } catch (e) {
-  //       console.log("error", e);
-  //     }
-  //     setIsSend(true);
-  //     setIsMailSend(true);
-  //     setIsLoading({ isLoad: false });
-  //     setIsUiLoading(false);
-  //   } else if (sendMail?.data?.result?.status === "quota-reached") {
-  //     setMailStatus("quotareached");
-  //     setIsSend(true);
-  //     setIsMailSend(true);
-  //     setIsUiLoading(false);
-  //   } else {
-  //     setMailStatus("failed");
-  //     setIsSend(true);
-  //     setIsMailSend(true);
-  //     setIsUiLoading(false);
-  //   }
-  // };
+  const sendEmailToSigners = async (documentId, dataToSendEmail) => {
+    const requestBody = `<p>Hi {{receiver_name}},</p><br><p>We hope this email finds you well. {{sender_name}}&nbsp;has requested you to review and sign&nbsp;{{document_title}}.</p><p>Your signature is crucial to proceed with the next steps as it signifies your agreement and authorization.</p><br><p>{{signing_url}}</p><br><p>If you have any questions or need further clarification regarding the document or the signing process,  please contact the sender.</p><br><p>Thanks</p><p> Team ${appName}</p><br>`;
+    const requestSubject = `{{sender_name}} has requested you to sign {{document_title}}`;
+    let isCustomize = false;
+
+    let htmlReqBody;
+    setIsUiLoading(true);
+    let sendMail;
+    const pdfDetails = dataToSendEmail.pdfDetails;
+
+    const expireDate = pdfDetails?.[0].ExpiryDate.iso;
+    const newDate = new Date(expireDate);
+    const localExpireDate = newDate.toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    });
+
+    let senderEmail = pdfDetails?.[0]?.ExtUserPtr?.Email;
+    let senderPhone = pdfDetails?.[0]?.ExtUserPtr?.Phone;
+    const signersdata = dataToSendEmail.signers;
+    let signerMail = signersdata.slice();
+
+    if (pdfDetails?.[0]?.SendinOrder && pdfDetails?.[0]?.SendinOrder === true) {
+      signerMail.splice(1);
+    }
+
+    for (let i = 0; i < signerMail.length; i++) {
+      try {
+        let url = `${localStorage.getItem("baseUrl")}functions/sendmailv3`;
+        const headers = {
+          "Content-Type": "application/json",
+          "X-Parse-Application-Id": localStorage.getItem("parseAppId"),
+          sessionToken: localStorage.getItem("accesstoken")
+        };
+        const objectId = signerMail[i].objectId;
+        const hostUrl = window.location.origin;
+        //encode this url value `${pdfDetails?.[0].objectId}/${signerMail[i].Email}/${objectId}` to base64 using `btoa` function
+        const encodeBase64 = btoa(
+          `${pdfDetails?.[0].objectId}/${signerMail[i].Email}/${objectId}`
+        );
+        let signPdf = `${hostUrl}/login/${encodeBase64}`;
+        const orgName = pdfDetails[0]?.ExtUserPtr.Company
+          ? pdfDetails[0].ExtUserPtr.Company
+          : "";
+        const senderName =
+          pdfDetails?.[0].ExtUserPtr.Name;
+        const documentName = `${pdfDetails?.[0].Name}`;
+        let replaceVar;
+
+        if (requestBody && requestSubject && isCustomize) {
+          const replacedRequestBody = requestBody.replace(/"/g, "'");
+          htmlReqBody =
+            "<html><head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8' /></head><body>" +
+            replacedRequestBody +
+            "</body> </html>";
+
+          const variables = {
+            document_title: documentName,
+            sender_name: senderName,
+            sender_mail: senderEmail,
+            sender_phone: senderPhone || "",
+            receiver_name: signerMail[i]?.Name || "",
+            receiver_email: signerMail[i].Email,
+            receiver_phone: signerMail[i]?.Phone || "",
+            expiry_date: localExpireDate,
+            company_name: orgName,
+            signing_url: `<a href=${signPdf} target=_blank>Sign here</a>`
+          };
+          replaceVar = replaceMailVaribles(
+            requestSubject,
+            htmlReqBody,
+            variables
+          );
+        } else if (tenantMailTemplate?.body && tenantMailTemplate?.subject) {
+          const mailBody = tenantMailTemplate?.body;
+          const mailSubject = tenantMailTemplate?.subject;
+          const replacedRequestBody = mailBody.replace(/"/g, "'");
+          const htmlReqBody =
+            "<html><head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8' /></head><body>" +
+            replacedRequestBody +
+            "</body> </html>";
+          const variables = {
+            document_title: documentName,
+            sender_name: senderName,
+            sender_mail: senderEmail,
+            sender_phone: senderPhone || "",
+            receiver_name: signerMail[i]?.Name || "",
+            receiver_email: signerMail[i].Email,
+            receiver_phone: signerMail[i]?.Phone || "",
+            expiry_date: localExpireDate,
+            company_name: orgName,
+            signing_url: `<a href=${signPdf} target=_blank>Sign here</a>`
+          };
+          replaceVar = replaceMailVaribles(mailSubject, htmlReqBody, variables);
+        }
+        const mailparam = {
+          senderName: senderName,
+          senderMail: senderEmail,
+          title: documentName,
+          organization: orgName,
+          localExpireDate: localExpireDate,
+          sigingUrl: signPdf
+        };
+        let params = {
+          extUserId: dataToSendEmail.extUserId,
+          recipient: signerMail[i].Email,
+          subject: replaceVar?.subject
+            ? replaceVar?.subject
+            : mailTemplate(mailparam).subject,
+          replyto: senderEmail,
+          from:
+            senderEmail,
+          html: replaceVar?.body
+            ? replaceVar?.body
+            : mailTemplate(mailparam).body
+        };
+        sendMail = await axios.post(url, params, { headers: headers });
+      } catch (error) {
+        console.log("error", error);
+      }
+    }
+    if (sendMail?.data?.result?.status === "success") {
+      try {
+        let data;
+        if (requestBody && requestSubject && isCustomize) {
+          data = {
+            RequestBody: htmlReqBody,
+            RequestSubject: requestSubject,
+            SendMail: true
+          };
+        }
+        else if (tenantMailTemplate?.body && tenantMailTemplate?.subject) {
+          data = {
+            RequestBody: tenantMailTemplate?.body,
+            RequestSubject: tenantMailTemplate?.subject,
+            SendMail: true
+          };
+        }
+        else {
+          data = { SendMail: true };
+        }
+        try {
+          await axios.put(
+            `${localStorage.getItem(
+              "baseUrl"
+            )}classes/contracts_Document/${documentId}`,
+            data,
+            {
+              headers: {
+                "Content-Type": "application/json",
+                "X-Parse-Application-Id": localStorage.getItem("parseAppId"),
+                "X-Parse-Session-Token": localStorage.getItem("accesstoken")
+              }
+            }
+          );
+        } catch (err) {
+          console.log("axois err ", err);
+        }
+      } catch (e) {
+        console.log("error", e);
+      }
+      isMailSent = true;
+      setIsUiLoading(false);
+    } else if (sendMail?.data?.result?.status === "quota-reached") {
+      setIsUiLoading(false);
+      setIsAlertMessage({ type: "danger", msg: 'Email Quota Reached' });
+      setTimeout(() => {
+        setIsAlertMessage({ type: "danger", msg: '' });
+        fetchDocumentsByApproverId(currentUser.id);
+      }, 1500);
+    } else {
+      setIsUiLoading(false);
+      setIsAlertMessage({ type: "danger", msg: 'Email Sending failed' });
+      setTimeout(() => {
+        setIsAlertMessage({ type: "danger", msg: '' });
+        fetchDocumentsByApproverId(currentUser.id);
+      }, 1500);
+    }
+  };
+
+  const fetchTenantDetails = async () => {
+    const user = JSON.parse(
+      localStorage.getItem(
+        `Parse/${localStorage.getItem("parseAppId")}/currentUser`
+      )
+    );
+    if (user) {
+      try {
+        const tenantDetails = await getTenantDetails(user?.objectId);
+        if (tenantDetails && tenantDetails === "user does not exist!") {
+          alert(t("user-not-exist"));
+        } else if (tenantDetails) {
+          const signatureType = tenantDetails?.SignatureType || [];
+          const filterSignTypes = signatureType?.filter(
+            (x) => x.enabled === true
+          );
+          if (tenantDetails?.RequestBody) {
+            setTenantMailTemplate({
+              body: tenantDetails?.RequestBody,
+              subject: tenantDetails?.RequestSubject
+            });
+          }
+          return filterSignTypes;
+        }
+      } catch (e) {
+        alert(t("user-not-exist"));
+      }
+    } else {
+      alert(t("user-not-exist"));
+    }
+  };
+
 
   return (
     <div className="relative">
@@ -420,6 +493,14 @@ const [pdfDetails, setPdfDetails] = useState([]);
       {isLoader && (
         <div className="absolute w-full h-[300px] md:h-[400px] flex justify-center items-center z-30 rounded-box">
           <Loader />
+        </div>
+      )}
+      {isUiLoading && (
+        <div className="absolute h-[100vh] w-full flex flex-col justify-center items-center z-[999] bg-[#e6f2f2] bg-opacity-80">
+          <Loader />
+          <span className="text-[13px] text-base-content">
+            {t("loading-mssg")}
+          </span>
         </div>
       )}
       {!isLoader && (

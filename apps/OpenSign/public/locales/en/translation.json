@@ -185,7 +185,8 @@
     "Expiry-date": "Expiry date",
     "Delete": "Delete",
     "Description":"Description",
-    "Approvers":"Approvers"
+    "Approvers":"Approvers",
+    "Additional-document":"Additional Document"
   },
   "report-help": {
     "Draft Documents": "These are documents you have started but have not finalized for sending.",
