@@ -45,9 +45,10 @@ async function sendMailDocumentApproval(request) {
       from: appName + '<' + mailsender + '>',
       recipient: recipientEmailIds,
       subject: `${appName} Document Approval`,
-      text: 'This email is a test.',
+      text: 'This is sample text and will not appear anywhere.',
       html: approvalEmail,
     });
+    return true;
   } catch (err) {
     console.log('err in sendMailDocumentApproval');
     console.log(err);
