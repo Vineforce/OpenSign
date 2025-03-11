@@ -301,7 +301,7 @@ export default function reportJson(id) {
             action: "redirect"
           }
         ]
-      };
+      };  
     // Drafts report show on dashboard
     case "kC5mfynCi4":
       return {

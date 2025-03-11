@@ -77,6 +77,40 @@ const sidebarList = [
     objectId: "drive"
   },
   {
+    icon: "fa-light fa-stamp",
+    title: "Document Sign Approval",
+    target: "_self",
+    pageType: null,
+    description: "",
+    objectId: null,
+    children: [
+      {
+        icon:"far fa-clock",
+        title: "Document Sign Pending",
+        target: "_self",
+        pageType: "",
+        description: "",
+        objectId: "documentsignpending"
+      },
+      {
+        icon: "far fa-file-check",
+        title: "Document Sign Approved",
+        target: "_self",
+        pageType: "",
+        description: "",
+        objectId: "documentsignapproved"
+      },
+      {
+        icon: "far fa-file-times",
+        title: "Document Sign Rejected",
+        target: "_self",
+        pageType: "",
+        description: "",
+        objectId: "documentsignrejected"
+      }
+    ]
+  },
+  {
     icon: "fa-light fa-address-card",
     title: "Documents",
     target: "_self",
@@ -91,7 +125,7 @@ const sidebarList = [
         pageType: "report",
         description: "",
         objectId: "4Hhwbp482K"
-      },
+      },     
       {
         icon: "fa-light fa-tasks",
         title: "In Progress",

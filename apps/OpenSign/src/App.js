@@ -20,6 +20,10 @@ import UserList from "./pages/UserList";
 import { serverUrl_fn } from "./constant/appinfo";
 import DocSuccessPage from "./pages/DocSuccessPage";
 import ValidateSession from "./primitives/ValidateSession";
+import DocumentSignApproved from "./pages/DocumentSignApproved";
+import DocumentSignPending from "./pages/DocumentSignPending";
+import DocumentSignRejected from "./pages/DocumentSignRejected";
+
 const DebugPdf = lazy(() => import("./pages/DebugPdf"));
 const ForgetPassword = lazy(() => import("./pages/ForgetPassword"));
 const GuestLogin = lazy(() => import("./pages/GuestLogin"));
@@ -170,6 +174,9 @@ function App() {
                 path="/preferences"
                 element={<LazyPage Page={Preferences} />}
               />
+              <Route path="/documentsignapproved" element={<DocumentSignApproved />} />
+              <Route path="/documentsignpending" element={<DocumentSignPending />} />
+              <Route path="/documentsignrejected" element={<DocumentSignRejected />} />
             </Route>
             <Route path="/success" element={<DocSuccessPage />} />
             <Route path="*" element={<PageNotFound />} />

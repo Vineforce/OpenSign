@@ -114,6 +114,12 @@
       "Teams": "Teams",
       "Team-update-successfully": "Team Updated successfully.",
       "Users": "Users"
+    },
+    "Document Sign Approval": "Document Approval",
+    "Document Sign Approval-Children":{
+      "Document Sign Pending":"Pending",
+      "Document Sign Approved": "Approved",
+      "Document Sign Rejected":"Rejected"
     }
   },
   "dashboard-card": {
@@ -178,6 +184,8 @@
     "Logs": "Logs",
     "Expiry-date": "Expiry date",
     "Delete": "Delete",
+    "Description":"Description",
+    "Approvers":"Approvers",
     "Additional-document":"Additional Document"
   },
   "report-help": {

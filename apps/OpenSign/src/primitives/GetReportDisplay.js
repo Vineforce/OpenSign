@@ -1923,10 +1923,16 @@ const ReportTable = (props) => {
                                     {handleBtnVisibility(act, item) && (
                                       <div
                                         role="button"
-                                        data-tut={act?.selector}
-                                        onClick={() =>
-                                          handleActionBtn(act, item)
-                                        }
+                                        data-tut={act?.selector}                                                                                
+                                        onClick={
+                                          act.action === 'share' ? 
+                                            (!item.Approvers || 
+                                            item.Approvers.length === 0 || 
+                                            item.Approvers.every(x => x.HasApproved === 'Approved') 
+                                            ? () => handleActionBtn(act, item) 
+                                            : null)
+                                          : () => handleActionBtn(act, item)
+                                        }                                                                             
                                         title={t(`btnLabel.${act.hoverLabel}`)}
                                         className={
                                           act.action !== "option"
@@ -1953,6 +1959,13 @@ const ReportTable = (props) => {
                                                       item
                                                     )
                                                   }
+                                                  style={{
+                                                   display: subact.btnLabel === "Resend" 
+                                                   ? (!item.Approvers ||  item.Approvers.length === 0 || 
+                                                    item.Approvers.every(x => x.HasApproved === 'Approved')) === true 
+                                                   ? 'block' : 'none'
+                                                   : 'block'
+                                                  }}                                                                                                                                                                                            
                                                   title={t(
                                                     `btnLabel.${subact.hoverLabel}`
                                                   )}
