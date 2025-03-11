@@ -553,9 +553,9 @@ const DocumentSignPending = () => {
                           ))}
                         </td>
                         <td>
-                          <a onClick={() => handleViewDocument(item)} title="View" className="btn btn-link btn-sm">
+                          {/* <a onClick={() => handleViewDocument(item)} title="View" className="btn btn-link btn-sm">
                             <i className="fa fa-eye" style={{ color: '#002864' }}></i>
-                          </a>
+                          </a> */}
                           <a onClick={() => handleDownloadDocument(item)} title="Download" className="btn btn-link btn-sm">
                             <i className="fa fa-download" style={{ color: '#002864' }}></i>
                           </a>
