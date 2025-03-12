@@ -130,43 +130,47 @@ const DocumentSignPending = () => {
   const handleViewDocument = async (item) => {
     const url = item?.SignedUrl || item?.FileUrl || "";
     const pdfName = item?.Name?.length > 100
-      ? item?.OriginalFileName?.slice(0, 100)
-      : item?.OriginalFileName || "Document";
-
-    const templateId = '';
-    const docId = item.objectId;
+      ? item?.Name?.slice(0, 100)
+      : item?.Name || "Document";
+    const templateId = false;
+    const docId = item.DocumentId;
 
     if (url) {
       try {
-        const signedUrl = await getSignedUrl(
-          url,
-          docId,
-          templateId
-        );
+        const signedUrl = await getSignedUrl(url, docId, templateId);   
+        try {
+          const response = await fetch(signedUrl);
+          if (!response.ok) {
+            alert("Something went wrong, please try again later.");
+            throw new Error("Network response was not ok");
+          }
 
-        // Create an anchor element to open the file in a new tab
-        const link = document.createElement('a');
-        link.href = signedUrl; // Use the signed URL
-        link.target = '_blank'; // Open in a new tab
-        link.download = pdfName; // Optionally set the filename for downloading
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link); // Clean up after opening the link
+          const blob = await response.blob();
+          const pdfUrl = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+          const newWindow = window.open(pdfUrl, '_blank');
+          if (newWindow) {
+            newWindow.document.title = pdfName; // Set the title for the new tab
+          }
 
+        } catch (err) {
+          console.error("Error fetching blob:", err);
+          alert("Error fetching the document.");
+        }
       } catch (err) {
         console.log("err in getsignedurl", err);
         alert(t("something-went-wrong-mssg"));
       }
     }
   };
+  
   const handleDownloadDocument = async (item) => {
     const url = item?.SignedUrl || item?.FileUrl || "";
     const pdfName = item?.Name?.length > 100
-      ? item?.OriginalFileName?.slice(0, 100)
-      : item?.OriginalFileName || "Document";
+      ? item?.Name?.slice(0, 100)
+      : item?.Name || "Document";
 
     const templateId = '';
-    const docId = item.objectId;
+    const docId = item.DocumentId;
     if (url) {
       try {
 
@@ -553,9 +557,9 @@ const DocumentSignPending = () => {
                           ))}
                         </td>
                         <td>
-                          {/* <a onClick={() => handleViewDocument(item)} title="View" className="btn btn-link btn-sm">
+                           <a onClick={() => handleViewDocument(item)} title="View" className="btn btn-link btn-sm">
                             <i className="fa fa-eye" style={{ color: '#002864' }}></i>
-                          </a> */}
+                          </a> 
                           <a onClick={() => handleDownloadDocument(item)} title="Download" className="btn btn-link btn-sm">
                             <i className="fa fa-download" style={{ color: '#002864' }}></i>
                           </a>
