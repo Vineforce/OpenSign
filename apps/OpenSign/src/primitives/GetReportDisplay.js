@@ -407,6 +407,7 @@ const ReportTable = (props) => {
                   objectId: creatorId
                 },
                 Signers: signers,
+                Approvers:templateData.Approvers,
                 SendinOrder: Doc?.SendinOrder || false,
                 AutomaticReminders: Doc?.AutomaticReminders || false,
                 RemindOnceInEvery: Doc?.RemindOnceInEvery || 5,

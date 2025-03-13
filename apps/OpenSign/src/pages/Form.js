@@ -807,7 +807,7 @@ const Forms = (props) => {
               />
             )}
 
-            {props.approvers && (
+            {(props.approvers || props.title === "New Template" || props.title === "Request Signatures") &&(
               <ApproversInput
                 label={("Approvers")}
                 onChange={handleApprovers}
