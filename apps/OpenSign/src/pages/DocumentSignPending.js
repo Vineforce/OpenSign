@@ -20,6 +20,7 @@ const DocumentSignPending = () => {
   const [isLoader, setIsLoader] = useState(false);
   const [isAlertMessage, setIsAlertMessage] = useState({ type: "success", msg: "" });
   const [isRejectSignModal, setIsRejectSignModal] = useState(false);
+  const [rejectItem, setRejectItem] = useState(null);
 
   const { t } = useTranslation();
   const location = useLocation();
@@ -210,6 +211,7 @@ const DocumentSignPending = () => {
         }
         else {
           setIsAlertMessage({ type: "success", msg: 'Document Sign Rejected' });
+          setIsRejectSignModal(false);
           setTimeout(() => {
             setIsAlertMessage({ type: "danger", msg: '' });
             fetchDocumentsByApproverId(currentUser.id);
@@ -225,11 +227,13 @@ const DocumentSignPending = () => {
     }
   };
 
-  const handleRejectDocumentClick = () => {
+  const handleRejectDocumentClick = (item) => {
+    setRejectItem(item); 
     setIsRejectSignModal(true)
   };
 
   const handleClose = () => {
+    setRejectItem(null);
     setIsRejectSignModal(false);
   };
 
@@ -571,7 +575,7 @@ const DocumentSignPending = () => {
                               <i className="fas fa-check"></i>
                             </div>
                             <div role="button" title="Reject"
-                              onClick={() => handleRejectDocumentClick()}
+                              onClick={() => handleRejectDocumentClick(item)}
                               className="op-btn-secondary op-btn op-btn-sm mr-1">
                               <i className="fas fa-ban"></i>
                             </div>
@@ -584,12 +588,12 @@ const DocumentSignPending = () => {
                             >
                               <div className="m-[20px]">
                                 <div className="text-lg font-normal text-black">
-                                  Are you sure you want to reject document {item.Name}?
+                                  Are you sure you want to reject document {rejectItem.Name}?
                                 </div>
                                 <hr className="bg-[#ccc] mt-4 " />
                                 <div className="flex items-center mt-3 gap-2 text-white">
                                   <button
-                                    onClick={() => handleApproveDocumentSign(item, 'Rejected')}
+                                    onClick={() => handleApproveDocumentSign(rejectItem, 'Rejected')}
                                     className="op-btn op-btn-primary"
                                   >
                                     {t("yes")}
