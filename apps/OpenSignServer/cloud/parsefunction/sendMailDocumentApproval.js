@@ -41,6 +41,12 @@ async function sendMailDocumentApproval(request) {
     you may file a complaint with Excis <a data-auth='NotApplicable' rel='noopener noreferrer' target='_blank' href='https://excis.com' data-linkindex='0'>here
     </a>.</p></div></div></div></div></body></html>`;
 
+    if(recipientEmailIds == '')
+    {
+      console.log('recipient is missing');
+      return false;
+    }
+
     await Parse.Cloud.sendEmail({
       from: appName + '<' + mailsender + '>',
       recipient: recipientEmailIds,
