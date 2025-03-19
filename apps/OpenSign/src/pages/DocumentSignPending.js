@@ -20,6 +20,7 @@ const DocumentSignPending = () => {
   const [isLoader, setIsLoader] = useState(false);
   const [isAlertMessage, setIsAlertMessage] = useState({ type: "success", msg: "" });
   const [isRejectSignModal, setIsRejectSignModal] = useState(false);
+  const [rejectItem, setRejectItem] = useState(null);
 
   const { t } = useTranslation();
   const location = useLocation();
@@ -130,43 +131,47 @@ const DocumentSignPending = () => {
   const handleViewDocument = async (item) => {
     const url = item?.SignedUrl || item?.FileUrl || "";
     const pdfName = item?.Name?.length > 100
-      ? item?.OriginalFileName?.slice(0, 100)
-      : item?.OriginalFileName || "Document";
-
-    const templateId = '';
-    const docId = item.objectId;
+      ? item?.Name?.slice(0, 100)
+      : item?.Name || "Document";
+    const templateId = false;
+    const docId = item.DocumentId;
 
     if (url) {
       try {
-        const signedUrl = await getSignedUrl(
-          url,
-          docId,
-          templateId
-        );
+        const signedUrl = await getSignedUrl(url, docId, templateId);   
+        try {
+          const response = await fetch(signedUrl);
+          if (!response.ok) {
+            alert("Something went wrong, please try again later.");
+            throw new Error("Network response was not ok");
+          }
 
-        // Create an anchor element to open the file in a new tab
-        const link = document.createElement('a');
-        link.href = signedUrl; // Use the signed URL
-        link.target = '_blank'; // Open in a new tab
-        link.download = pdfName; // Optionally set the filename for downloading
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link); // Clean up after opening the link
+          const blob = await response.blob();
+          const pdfUrl = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+          const newWindow = window.open(pdfUrl, '_blank');
+          if (newWindow) {
+            newWindow.document.title = pdfName; // Set the title for the new tab
+          }
 
+        } catch (err) {
+          console.error("Error fetching blob:", err);
+          alert("Error fetching the document.");
+        }
       } catch (err) {
         console.log("err in getsignedurl", err);
         alert(t("something-went-wrong-mssg"));
       }
     }
   };
+  
   const handleDownloadDocument = async (item) => {
     const url = item?.SignedUrl || item?.FileUrl || "";
     const pdfName = item?.Name?.length > 100
-      ? item?.OriginalFileName?.slice(0, 100)
-      : item?.OriginalFileName || "Document";
+      ? item?.Name?.slice(0, 100)
+      : item?.Name || "Document";
 
     const templateId = '';
-    const docId = item.objectId;
+    const docId = item.DocumentId;
     if (url) {
       try {
 
@@ -206,6 +211,7 @@ const DocumentSignPending = () => {
         }
         else {
           setIsAlertMessage({ type: "success", msg: 'Document Sign Rejected' });
+          setIsRejectSignModal(false);
           setTimeout(() => {
             setIsAlertMessage({ type: "danger", msg: '' });
             fetchDocumentsByApproverId(currentUser.id);
@@ -221,11 +227,13 @@ const DocumentSignPending = () => {
     }
   };
 
-  const handleRejectDocumentClick = () => {
+  const handleRejectDocumentClick = (item) => {
+    setRejectItem(item); 
     setIsRejectSignModal(true)
   };
 
   const handleClose = () => {
+    setRejectItem(null);
     setIsRejectSignModal(false);
   };
 
@@ -553,9 +561,9 @@ const DocumentSignPending = () => {
                           ))}
                         </td>
                         <td>
-                          {/* <a onClick={() => handleViewDocument(item)} title="View" className="btn btn-link btn-sm">
+                           <a onClick={() => handleViewDocument(item)} title="View" className="btn btn-link btn-sm">
                             <i className="fa fa-eye" style={{ color: '#002864' }}></i>
-                          </a> */}
+                          </a> 
                           <a onClick={() => handleDownloadDocument(item)} title="Download" className="btn btn-link btn-sm">
                             <i className="fa fa-download" style={{ color: '#002864' }}></i>
                           </a>
@@ -567,7 +575,7 @@ const DocumentSignPending = () => {
                               <i className="fas fa-check"></i>
                             </div>
                             <div role="button" title="Reject"
-                              onClick={() => handleRejectDocumentClick()}
+                              onClick={() => handleRejectDocumentClick(item)}
                               className="op-btn-secondary op-btn op-btn-sm mr-1">
                               <i className="fas fa-ban"></i>
                             </div>
@@ -580,12 +588,12 @@ const DocumentSignPending = () => {
                             >
                               <div className="m-[20px]">
                                 <div className="text-lg font-normal text-black">
-                                  Are you sure you want to reject document {item.Name}?
+                                  Are you sure you want to reject document {rejectItem.Name}?
                                 </div>
                                 <hr className="bg-[#ccc] mt-4 " />
                                 <div className="flex items-center mt-3 gap-2 text-white">
                                   <button
-                                    onClick={() => handleApproveDocumentSign(item, 'Rejected')}
+                                    onClick={() => handleApproveDocumentSign(rejectItem, 'Rejected')}
                                     className="op-btn op-btn-primary"
                                   >
                                     {t("yes")}

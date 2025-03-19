@@ -22,8 +22,8 @@ async function saveDocumentSignApprover({ documentId, approvers }) {
     approvers.forEach(approver => {
       // Construct the approver object with both the Pointer and IsApproved field
       const approverObject = {
-        contracts_Users_Id: approver.id,  // Assuming approver.id is the user ID
-        HasApproved: 'ApprovalPending'  // This is the custom field in contracts_Document
+        contracts_Users_Id: approver.contracts_Users_Id,
+        HasApproved: 'ApprovalPending' 
       };
       // Push the approver object to the currentApprovers array
       currentApprovers.push(approverObject);

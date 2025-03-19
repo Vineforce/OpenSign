@@ -83,6 +83,24 @@ const TemplatePlaceholder = () => {
 
   //---Upload additional document states started-----
   const [isAdditionalDocModal, setisAdditionalDocModal] = useState(false);
+  //--- Variable to get Approvers data
+  const [approvers, setApproverData] = useState([]);
+
+  const saveDocumentSignApprover = async (docId) => {
+    try {
+      const documentSignApproverData = {
+        documentId: docId, 
+        approvers:approvers
+      };
+      // Call the cloud function and pass the documentSignApproverData
+      const response = await Parse.Cloud.run('saveDocumentSignApprover', documentSignApproverData); 
+      //console.log('Cloud function response:', response);  
+    } catch (error) {
+      console.error('Error saving document:', error);  // Handle error
+    }
+  };
+ 
+  //----- 
   
   // Declare the state to hold the document ID
   const [documentIdCreated, setDocumentIdCreated] = useState("");
@@ -272,6 +290,8 @@ const TemplatePlaceholder = () => {
           }
         }
       );
+      // Get if approvers are available 
+      setApproverData(templateDeatils.data.result.Approvers);
       const documentData =
         templateDeatils.data && templateDeatils.data.result
           ? [templateDeatils.data.result]
@@ -1145,6 +1165,11 @@ const TemplatePlaceholder = () => {
     );
     if (res.status === "success") {
       setDocumentIdCreated(res.id);
+      // add approver data to the newly created document     
+      if (approvers && approvers.length > 0) {
+         //save approvers from template to document
+        await saveDocumentSignApprover(res.id);
+      }
       setisAdditionalDocModal(true);
       // moved to other function as per additional document upload handling
       // navigate(`/placeHolderSign/${res.id}`, {
@@ -1198,7 +1223,7 @@ const TemplatePlaceholder = () => {
   const getAdditionalDocumentByDocumentId = async () => {
     try {
       const documents = await Parse.Cloud.run('getAdditionalDocumentByDocumentId', { documentId: documentIdCreated });
-      console.log('Document fetched successfully');
+      console.log('Additonal Document fetched successfully');
       return documents;
     } catch (error) {
       console.error('Error fetching document:', error);
