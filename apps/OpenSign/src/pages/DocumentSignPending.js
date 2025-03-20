@@ -21,6 +21,7 @@ const DocumentSignPending = () => {
   const [isAlertMessage, setIsAlertMessage] = useState({ type: "success", msg: "" });
   const [isRejectSignModal, setIsRejectSignModal] = useState(false);
   const [rejectItem, setRejectItem] = useState(null);
+  const [comment, setComment] = useState('');
 
   const { t } = useTranslation();
   const location = useLocation();
@@ -191,7 +192,7 @@ const DocumentSignPending = () => {
 
   const handleApproveDocumentSign = async (item, approveReject) => {
     try {
-      const params = { approverUserId: currentUser.id, documentId: item.DocumentId, approvedorrejected: approveReject }
+      const params = { approverUserId: currentUser.id, documentId: item.DocumentId, approvedorrejected: approveReject, comment:comment }
       const approveRejectStatus = await Parse.Cloud.run('approveRejectDocumentSign', params);
       if (approveRejectStatus) {
         if (approveReject === 'Approved') {
@@ -210,7 +211,15 @@ const DocumentSignPending = () => {
             });
         }
         else {
-          setIsAlertMessage({ type: "success", msg: 'Document Sign Rejected' });
+          // send document rejection email
+          const params = { approverUserId: currentUser.id, documentId: item.DocumentId }
+          const rejectionEmailNotification = await Parse.Cloud.run('sendMailDocumentSignApprovalRejected', params);
+          if (rejectionEmailNotification) {
+            setIsAlertMessage({ type: "success", msg: 'Document Sign Rejected. Notification sent to document owner' });
+          }
+          else {
+            setIsAlertMessage({ type: "success", msg: 'Document Sign Rejected. Notification email Sending fail' });
+          }
           setIsRejectSignModal(false);
           setTimeout(() => {
             setIsAlertMessage({ type: "danger", msg: '' });
@@ -229,6 +238,7 @@ const DocumentSignPending = () => {
 
   const handleRejectDocumentClick = (item) => {
     setRejectItem(item); 
+    setComment('');
     setIsRejectSignModal(true)
   };
 
@@ -588,9 +598,19 @@ const DocumentSignPending = () => {
                             >
                               <div className="m-[20px]">
                                 <div className="text-lg font-normal text-black">
-                                  Are you sure you want to reject document {rejectItem.Name}?
+                                  Are you sure you want to reject document &quot;{rejectItem.Name}&quot; ?
                                 </div>
                                 <hr className="bg-[#ccc] mt-4 " />
+                                <div className="mt-4">
+                                  <label htmlFor="comment" className="text-sm text-black">Please provide a comment (optional):</label>
+                                  <textarea
+                                    id="comment"
+                                    rows="4"
+                                    className="w-full mt-2 p-2 border rounded-md border-[#ccc] bg-white text-black placeholder-gray-400"
+                                    placeholder="Enter your comment here..."
+                                    onChange={(e) => setComment(e.target.value)}
+                                  />
+                                </div>
                                 <div className="flex items-center mt-3 gap-2 text-white">
                                   <button
                                     onClick={() => handleApproveDocumentSign(rejectItem, 'Rejected')}
