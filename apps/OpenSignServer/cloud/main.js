@@ -52,6 +52,7 @@ import fileUpload from './parsefunction/fileUpload.js';
 import getUserListByOrg from './parsefunction/getUserListByOrg.js';
 import editContact from './parsefunction/editContact.js';
 import deleteUser from './parsefunction/deleteUser.js';
+import sendMailOnDecline from './parsefunction/SendMailOnDecline.js';
 
 import additionalDocumentOperation from './parsefunction/additionalDocumentOperation.js';
 const {saveAdditionalDocument,removeDocument,getAdditionalDocumentByDocumentId}=additionalDocumentOperation;
@@ -142,3 +143,4 @@ Parse.Cloud.define('sendMailDocumentApproval',sendMailDocumentApproval);
 Parse.Cloud.define('approveRejectDocumentSign',approveRejectDocumentSign);
 Parse.Cloud.define('hasAllApproverApproved',hasAllApproverApproved);
 Parse.Cloud.define('sendMailDocumentSignApprovalRejected',sendMailDocumentSignApprovalRejected);
+Parse.Cloud.define('sendMailOnDecline',sendMailOnDecline);

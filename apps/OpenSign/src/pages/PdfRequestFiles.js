@@ -1292,6 +1292,12 @@ function PdfRequestFiles(
         const res = result.data;
         if (res) {
           const currentDecline = { currnt: "YouDeclined", isDeclined: true };
+          // send decline mail to document owner 
+          const Declineparams = {
+            docId: pdfDetails?.[0].objectId,
+            userId: userId
+          };     
+          const declineNotificationEmailStatus = await Parse.Cloud.run('sendMailOnDecline',Declineparams);          
           setIsDecline(currentDecline);
           setIsUiLoading(false);
         }

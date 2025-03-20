@@ -95,8 +95,8 @@ async function getDocumentOwnerApproverComment(docId, approverId) {
   
   // Find the approver's comment in the Approvers array from the document
   let approver = _res.Approvers.find(approver => approver.contracts_Users_Id === user.id);
-  // Check if the approver exists in the array
-  let approverComment = approver ? approver.comment : 'No comment provided'; 
+  // Check if the approver exists in the array  
+  let approverComment = approver ? approver.comment.replace(/\n/g, '<br>') : 'No comment provided'; 
 
   // Return the required fields
   return {
@@ -127,12 +127,12 @@ async function sendMailDocumentSignApprovalRejected(request) {
       <p>Dear <b>${result.ownerName},</b></p>
       <p style='font-family:system-ui;font-size:14px'>We regret to inform you that the document sign approval for <b>${result.documentName}</b> has been rejected by the approver, <b> ${result.approverName} </b>
       <br> The reason for the rejection is as follows:</p>
-      <p><b>Approver's Comments:</b>
+      <p style='font-family:system-ui;font-size:14px'><b>Approver's Comments:</b>
       <br>${result.approverComment}</p>
-      <div>Please review the comments and make the necessary revisions to the document. Once updated, you may resubmit it for approval.<br> 
+      <p style='font-family:system-ui;font-size:14px'>Please review the comments and make the necessary revisions to the document. Once updated, you may resubmit it for approval.<br> 
       If you have any questions or need further assistance, feel free to reach out.<br> 
-      Thank you for your attention to this matter.</div>
-      <p>Thanks<br> 
+      Thank you for your attention to this matter.</p>
+      <p style='font-family:system-ui;font-size:14px'>Thanks<br> 
       Team Excis</p>
       <p style='text-decoration: none; font-weight: bolder; color:blue;font-size:45px;margin:20px'></p></div></div></div></div>    
       <div style='background-color: #f5f5f5;'>
