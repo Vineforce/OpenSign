@@ -188,6 +188,7 @@ async function approveRejectDocumentSign(approveRejectData) {
   try {
     const documentId = approveRejectData.params.documentId;
     const approvedorrejected = approveRejectData.params.approvedorrejected;
+    const comment= approveRejectData.params.comment;
     // This is _User table id
     const approverUserId = approveRejectData.params.approverUserId;
     // Get Contracts_Users table id
@@ -212,6 +213,7 @@ async function approveRejectDocumentSign(approveRejectData) {
       if (approver.contracts_Users_Id == approverContracts_Users_Id) {
         approver.HasApproved = approvedorrejected;
         approver.ApprovedRejectedOn = new Date();
+        approver.comment = comment;
       }
     });
 
