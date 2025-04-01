@@ -435,14 +435,21 @@ const ReportTable = (props) => {
                     }
                   }
                 );
-
                 if (res.data && res.data.objectId) {
                   setActLoader({});
                   setIsAlert(true);
                   setTimeout(() => setIsAlert(false), 1500);
-                  navigate(`/${act.redirectUrl}/${res.data.objectId}`, {
-                    state: { title: "Use Template" }
-                  });
+                  try {
+                    const documentIdData = {
+                      documentId: res.data.objectId
+                    };
+                    const response = await Parse.Cloud.run('updateUseTemplateDate', documentIdData);
+                    navigate(`/${act.redirectUrl}/${res.data.objectId}`, {
+                      state: { title: "Use Template" }
+                    });
+                  } catch (error) {
+                    console.error('Error clear date in use template:', error); 
+                  }                 
                 }
               } catch (err) {
                 console.log("Err", err);
