@@ -106,6 +106,17 @@ export default async function getReport(request) {
             return myDoc;
           }
           else {
+            if(reportId == '6TeaPr321t')
+              {
+                try {
+                  let result = await GetShareWithUsersTemplate(userId);
+                  if (result && result.length > 0) {  
+                    res.data.results.push(...result);
+                  }
+                } catch (error) {
+                  console.error("Error fetching data:", error);
+                }
+              }
             return res.data.results;
           }
         } else {
@@ -122,5 +133,55 @@ export default async function getReport(request) {
     } else {
       return { error: "You don't have access!" };
     }
+  }
+}
+
+async function GetShareWithUsersTemplate(userid) {
+  try {
+    const Usertable = new Parse.Query('contracts_Users');
+    Usertable.equalTo('UserId', { __type: 'Pointer', className: '_User', objectId: userid });
+    const Contract_User = await Usertable.first({ useMasterKey: true });
+   
+    let subQuery = new Parse.Query('contracts_Template');
+    subQuery.equalTo('ShareWithUsers.contracts_Users_Id', Contract_User.id);
+    subQuery.descending('createdAt');
+    const filteredResults = await subQuery.find({ useMasterKey: true });
+ 
+    return await Promise.all(filteredResults.map(async (template) => {
+      const templateData = template.toJSON();
+      const Users_IdQuery = new Parse.Query('_User');
+      Users_IdQuery.equalTo('objectId', templateData.CreatedBy.objectId);
+      const User = await Users_IdQuery.first({ useMasterKey: true });
+ 
+      return {
+        ExtUserPtr: {
+          Name: User ? User.get('name') : '',
+          createdAt: User.get('createdAt'),
+          updatedAt: User.get('updatedAt'),
+          objectId: User.id,
+          __type: 'Object',
+          className: 'contracts_Users'
+        },
+        Name: templateData.Name,
+        Note: templateData.Note,
+        SendinOrder: templateData.SendinOrder,
+        NotifyOnSignatures: templateData.NotifyOnSignatures,
+        URL: templateData.URL,
+        createdAt: templateData.createdAt,
+        updatedAt: templateData.updatedAt,
+        CreatedBy: templateData.CreatedBy,
+        SignatureType: templateData.SignatureType,
+        Signers: templateData.Signers,
+        Placeholders: templateData.Placeholders,
+        ShareWithUsers:templateData.ShareWithUsers,
+        ACL: templateData.ACL,
+        objectId: templateData.objectId
+      };
+    }));
+  } catch (error) {
+    console.error("Error in GetShareWithUsersTemplate:", error);
+    return error.code === 209
+      ? { error: 'Invalid session token', code: 209 }
+      : { error: "Error accessing templates", message: error.message || "You don't have access!", code: error.code };
   }
 }

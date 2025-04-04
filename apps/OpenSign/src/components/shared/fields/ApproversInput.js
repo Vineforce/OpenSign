@@ -111,8 +111,8 @@ const ApproversInput = (props) => {
         >
           <Tooltip
             id={`${props.label ? props.label : "signers"}-tooltip`}
-            message="Start typing a contact's name to see suggested approvers from your saved contacts, or add a new one. Each approver will receive an email asking them to approve the document. Once all approvers have given their approval, the signer can begin signing the document"
-          />
+            message={props.tooltipMessageDetails || "Start typing a contact's name to see suggested approvers from your saved contacts, or add a new one. Each approver will receive an email asking them to approve the document. Once all approvers have given their approval, the signer can begin signing the document"}
+           />
         </span>
       </label>
       <div className="flex gap-x-[5px]">
@@ -154,7 +154,7 @@ const ApproversInput = (props) => {
         >
           <Tooltip
             id={`${props.label ? props.label : "signers"}-tooltip`}
-            message="Go to Settings, then click on 'Users' and click on 'Add User' to add a new approver."
+            message={props.tooltipMessageInfo || "Go to Settings, then click on 'Users' and click on 'Add User' to add a new approver."}
           />
         </span>
         </div>

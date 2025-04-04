@@ -36,6 +36,8 @@ import { useTranslation } from "react-i18next";
 import DownloadPdfZip from "./DownloadPdfZip";
 import * as XLSX from "xlsx";
 import EditContactForm from "../components/EditContactForm";
+import ApproversInput from "../components/shared/fields/ApproversInput";
+
 
 const ReportTable = (props) => {
   const appName =
@@ -92,8 +94,57 @@ const ReportTable = (props) => {
   const [uploadedDocumentsAdditional, setuploadedDocumentsAdditional] = useState([]);
   const [loadingUploadedDocAdditional, setUploadedLoadingDocAdditional] = useState(true);
   const [errorUploadedDocAdditional, setUploadedErrorDocAdditional] = useState(null);
+  const [ShareWithUsers, setShareWithUsers] = useState(""); //Data Collection
+  const [isShareWithUsersModal, setIsShareWithUsersModal] = useState({});
 
-  
+  const handleShareWithUsers = (data) => {
+    if (data && data.length > 0) {
+      const shareWithUserList = data.map((x) => ({
+        Users_Id: x,
+      }));
+      setShareWithUsers(shareWithUserList);
+    }
+  };
+  const handleShareWithUsersApi = async (e, TempId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsShareWith({});
+    setActLoader(true); // Show loader before API call
+ 
+    try {
+      if (!TempId) return; // Ensure ObjId is valid
+      const ShareWithUsersArr = ShareWithUsers.map((x) => ({
+        __type: "Pointer",
+        className: "contracts_Users",
+        objectId: x.Users_Id, // Ensure correct user reference
+      }));
+      // Await API response
+      const res = await Parse.Cloud.run("shareWithUsers", {
+        templateId: TempId,
+        ShareWithUsersArr
+      });
+      if (res) {
+        setShareWithUsers(null);
+        setIsAlert(true);
+        setAlertMsg({
+          type: "success",
+          message: t("template-share-alert"),
+        });
+      }
+    } catch (err) {
+      console.error("Error sharing template:", err); // Log error for debugging
+      setIsAlert(true);
+      setAlertMsg({
+        type: "danger",
+        message: t("something-went-wrong-mssg"),
+      });
+    } finally {
+      setActLoader(false); // Hide loader
+      setTimeout(() => setIsAlert(false), 1500);
+    }
+ 
+    setIsShareWithUsersModal(false); // Close modal
+  };
   // Function to fetch documents
   const fetchUploadedDocuments = async (documentIdUploadedAddDoc) => {
     try {
@@ -514,6 +565,9 @@ const ReportTable = (props) => {
         setSelectedTeam(formatedList);
       }
       setIsShareWith({ [item.objectId]: true });
+    }
+    else if (act.action === "sharewithusers") {
+      setIsShareWithUsersModal({ [item.objectId]: true });
     }
     else if (act.action === "duplicate") {
       setIsModal({ [`duplicate_${item.objectId}`]: true });
@@ -2060,6 +2114,39 @@ const ReportTable = (props) => {
                                       >
                                         {t("submit")}
                                       </button>
+                              </div>
+                            </div>
+                          )}
+                          {isShareWithUsersModal[item.objectId] && (
+                            <div className="op-modal op-modal-open">
+                              <div className="max-h-90 bg-base-100 w-[95%] md:max-w-[500px] rounded-box relative">
+                                <h3 className="text-base-content font-bold text-lg pt-[15px] px-[20px]">
+                                  Share With Users
+                                </h3>
+                                <div
+                                  className="op-btn op-btn-sm op-btn-circle op-btn-ghost text-base-content absolute right-2 top-2 z-40"
+                                  onClick={() => setIsShareWithUsersModal({})}
+                                >
+                                  ✕
+                                </div>
+                                <div className="px-2 mt-3 w-full h-full">
+                                  <ApproversInput
+                                    label={("Share With Users")}
+                                    onChange={handleShareWithUsers}
+                                    helptextZindex={50}
+                                    tooltipMessageDetails="Start typing a contact's name to see suggested user from your saved contacts, or add a new one."
+                                    tooltipMessageInfo="Go to Settings, then click on 'Users' and click on 'Add User'"
+                                 
+                                  />
+                                </div>
+                                <button
+                                  onClick={(e) =>
+                                    handleShareWithUsersApi(e,item.objectId)
+                                  }
+                                  className="op-btn op-btn-primary ml-[10px] my-3"
+                                >
+                                  {t("submit")}
+                                </button>
                               </div>
                             </div>
                           )}
