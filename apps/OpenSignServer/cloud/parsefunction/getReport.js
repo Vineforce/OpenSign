@@ -143,6 +143,7 @@ async function GetShareWithUsersTemplate(userid) {
     const Contract_User = await Usertable.first({ useMasterKey: true });
    
     let subQuery = new Parse.Query('contracts_Template');
+    subQuery.notEqualTo('IsArchive', true);
     subQuery.equalTo('ShareWithUsers.contracts_Users_Id', Contract_User.id);
     subQuery.descending('createdAt');
     const filteredResults = await subQuery.find({ useMasterKey: true });
