@@ -7,9 +7,8 @@ import { appInfo } from "./appinfo";
 import { saveAs } from "file-saver";
 import printModule from "print-js";
 import fontkit from "@pdf-lib/fontkit";
-import {
-  themeColor
-} from "./const";
+import { themeColor } from "./const";
+import { format, toZonedTime } from "date-fns-tz";
 
 export const fontsizeArr = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28];
 export const fontColorArr = ["red", "black", "blue", "yellow"];
@@ -136,14 +135,12 @@ export const pdfNewWidthFun = (divRef) => {
 };
 
 //`contractUsers` function is used to get contract_User details
-export const contractUsers = async (
-) => {
+export const contractUsers = async () => {
   try {
     const url = `${localStorage.getItem("baseUrl")}functions/getUserDetails`;
     const parseAppId = localStorage.getItem("parseAppId");
     const accesstoken = localStorage.getItem("accesstoken");
-    const token =
-          { "X-Parse-Session-Token": accesstoken };
+    const token = { "X-Parse-Session-Token": accesstoken };
     const headers = {
       headers: {
         "Content-Type": "application/json",
@@ -236,17 +233,47 @@ export const widgets = [
   { type: "email", icon: "fa-light fa-envelope", iconSize: "20px" }
 ];
 
-export const getDate = () => {
+export const getDate = (dateformat) => {
+  const format = dateformat || "MM/DD/YYYY";
   const date = new Date();
   const milliseconds = date.getTime();
-  const newDate = moment(milliseconds).format("MM/DD/YYYY");
+  const newDate = moment(milliseconds).format(format);
   return newDate;
 };
-export const addWidgetOptions = (type) => {
-  const defaultOpt = {
-    name: type,
-    status: "required"
-  };
+
+export const selectFormat = (data) => {
+  switch (data) {
+    case "L":
+      return "MM/dd/yyyy";
+    case "MM/DD/YYYY":
+      return "MM/dd/yyyy";
+    case "DD-MM-YYYY":
+      return "dd-MM-yyyy";
+    case "DD/MM/YYYY":
+      return "dd/MM/yyyy";
+    case "LL":
+      return "MMMM dd, yyyy";
+    case "DD MMM, YYYY":
+      return "dd MMM, yyyy";
+    case "YYYY-MM-DD":
+      return "yyyy-MM-dd";
+    case "MM-DD-YYYY":
+      return "MM-dd-yyyy";
+    case "MM.DD.YYYY":
+      return "MM.dd.yyyy";
+    case "MMM DD, YYYY":
+      return "MMM dd, yyyy";
+    case "MMMM DD, YYYY":
+      return "MMMM dd, yyyy";
+    case "DD MMMM, YYYY":
+      return "dd MMMM, yyyy";
+    default:
+      return "MM/dd/yyyy";
+  }
+};
+
+export const addWidgetOptions = (type, signer) => {
+  const defaultOpt = { name: type, status: "required" };
   switch (type) {
     case "signature":
       return defaultOpt;
@@ -267,12 +294,16 @@ export const addWidgetOptions = (type) => {
       return { ...defaultOpt };
     case "job title":
       return { ...defaultOpt };
-    case "date":
+    case "date": {
+      const dateFormat = signer?.DateFormat
+        ? selectFormat(signer?.DateFormat)
+        : "MM/dd/yyyy";
       return {
         ...defaultOpt,
-        response: getDate(),
-        validation: { format: "MM/dd/yyyy", type: "date-format" }
+        response: getDate(signer?.DateFormat),
+        validation: { format: dateFormat, type: "date-format" }
       };
+    }
     case "image":
       return defaultOpt;
     case "email":
@@ -293,7 +324,7 @@ export const addWidgetOptions = (type) => {
   }
 };
 
-export const addWidgetSelfsignOptions = (type, getWidgetValue) => {
+export const addWidgetSelfsignOptions = (type, getWidgetValue, owner) => {
   switch (type) {
     case "signature":
       return { name: "signature" };
@@ -323,12 +354,16 @@ export const addWidgetSelfsignOptions = (type, getWidgetValue) => {
         defaultValue: getWidgetValue(type),
         validation: { type: "text", pattern: "" }
       };
-    case "date":
+    case "date": {
+      const dateFormat = owner?.DateFormat
+        ? selectFormat(owner?.DateFormat)
+        : "MM/dd/yyyy";
       return {
         name: "date",
-        response: getDate(),
-        validation: { format: "MM/dd/yyyy", type: "date-format" }
+        response: getDate(owner?.DateFormat),
+        validation: { format: dateFormat, type: "date-format" }
       };
+    }
     case "image":
       return { name: "image" };
     case "email":
@@ -495,7 +530,7 @@ export const signPdfFun = async (
   documentId,
   signerObjectId,
   objectId,
-  widgets,
+  widgets
 ) => {
   let isCustomCompletionMail = false;
   try {
@@ -504,10 +539,7 @@ export const signPdfFun = async (
     if (tenantDetails && tenantDetails === "user does not exist!") {
       return { status: "error", message: "User does not exist." };
     } else {
-      if (
-        tenantDetails?.CompletionBody &&
-        tenantDetails?.CompletionSubject
-      ) {
+      if (tenantDetails?.CompletionBody && tenantDetails?.CompletionSubject) {
         isCustomCompletionMail = true;
       }
     }
@@ -642,7 +674,13 @@ export const createDocument = async (
       ...Bcc,
       ...RedirectUrl
     };
-
+    const remindOnceInEvery = Doc?.RemindOnceInEvery;
+    const TimeToCompleteDays = parseInt(Doc?.TimeToCompleteDays);
+    const reminderCount = TimeToCompleteDays / remindOnceInEvery;
+    const AutomaticReminders = Doc.autoreminder;
+    if (AutomaticReminders && reminderCount > 15) {
+      return { status: "error", id: "only-15-reminder-allowed" };
+    }
     try {
       const res = await axios.post(
         `${localStorage.getItem("baseUrl")}classes/contracts_Document`,
@@ -660,7 +698,7 @@ export const createDocument = async (
       }
     } catch (err) {
       console.log("axois err ", err);
-      return { status: "error", id: "Something Went Wrong!" };
+      return { status: "error", id: "something-went-wrong-mssg" };
     }
   }
 };
@@ -933,10 +971,7 @@ export const calculateInitialWidthHeight = (widgetData) => {
   const height = span.offsetHeight;
 
   document.body.removeChild(span);
-  return {
-    getWidth: width,
-    getHeight: height
-  };
+  return { getWidth: width, getHeight: height };
 };
 export const addInitialData = (signerPos, setXyPosition, value, userId) => {
   function widgetDataValue(type) {
@@ -967,9 +1002,7 @@ export const addInitialData = (signerPos, setXyPosition, value, userId) => {
           )
         };
       } else {
-        return {
-          ...item
-        };
+        return item;
       }
     } else if (item.pos && item.pos.length > 0) {
       // If there is no nested array, add the new field
@@ -985,19 +1018,11 @@ export const addInitialData = (signerPos, setXyPosition, value, userId) => {
           ...item,
           options: {
             ...item.options,
-            defaultValue: widgetData
+            defaultValue: item?.options?.defaultValue || widgetData
           }
-          // Width:
-          //   calculateInitialWidthHeight(item.type, widgetData).getWidth ||
-          //   item?.Width,
-          // Height:
-          //   calculateInitialWidthHeight(item.type, widgetData).getHeight ||
-          //   item?.Height
         };
       } else {
-        return {
-          ...item
-        };
+        return item;
       }
     }
   });
@@ -1005,8 +1030,7 @@ export const addInitialData = (signerPos, setXyPosition, value, userId) => {
 
 //function for embed document id
 export const embedDocId = async (pdfDoc, documentId, allPages) => {
-  const appName =
-    "Excis";
+  const appName = "Excis";
   // `fontBytes` is used to embed custom font in pdf
   const fontBytes = await fileasbytes(
     "https://cdn.opensignlabs.com/webfonts/times.ttf"
@@ -1868,12 +1892,9 @@ export const contactBook = async (objectId) => {
 };
 
 //function for getting document details from contract_Documents class
-export const contractDocument = async (
-  documentId,
-) => {
+export const contractDocument = async (documentId) => {
   const data = { docId: documentId };
-  const token =
-        { sessionToken: localStorage.getItem("accesstoken") };
+  const token = { sessionToken: localStorage.getItem("accesstoken") };
   const documentDeatils = await axios
     .post(`${localStorage.getItem("baseUrl")}functions/getDocument`, data, {
       headers: {
@@ -2057,36 +2078,31 @@ export const getFileName = (fileUrl) => {
 
 //fetch tenant app logo from `partners_Tenant` class by domain name
 export const getAppLogo = async () => {
-    const domain = window.location.host;
-    try {
-      const tenant = await Parse.Cloud.run("getlogobydomain", {
-        domain: domain
-      });
-      if (tenant) {
-          localStorage.setItem("appname", "Excis");
-        return { logo: tenant?.logo, user: tenant?.user };
-      }
-    } catch (err) {
-      console.log("err in getlogo ", err);
-      if (err?.message?.includes("valid JSON")) {
-        return { logo: appInfo.applogo, user: "exist", error: "invalid_json" };
-      } else {
-        return { logo: appInfo.applogo, user: "exist" };
-      }
+  const domain = window.location.host;
+  try {
+    const tenant = await Parse.Cloud.run("getlogobydomain", {
+      domain: domain
+    });
+    if (tenant) {
+      localStorage.setItem("appname", "Excis");
+      return { logo: tenant?.logo, user: tenant?.user };
     }
+  } catch (err) {
+    console.log("err in getlogo ", err);
+    if (err?.message?.includes("valid JSON")) {
+      return { logo: appInfo.applogo, user: "exist", error: "invalid_json" };
+    } else {
+      return { logo: appInfo.applogo, user: "exist" };
+    }
+  }
 };
-export const getTenantDetails = async (
-  objectId,
-  contactId
-) => {
+export const getTenantDetails = async (objectId, contactId) => {
   try {
     const url = `${localStorage.getItem("baseUrl")}functions/gettenant`;
     const parseAppId = localStorage.getItem("parseAppId");
     const accesstoken = localStorage.getItem("accesstoken");
-    const token =
-          { "X-Parse-Session-Token": accesstoken };
-    const data =
-          { userId: objectId, contactId: contactId };
+    const token = { "X-Parse-Session-Token": accesstoken };
+    const data = { userId: objectId, contactId: contactId };
     const res = await axios.post(url, data, {
       headers: {
         "Content-Type": "application/json",
@@ -2173,26 +2189,21 @@ export const handleSendOTP = async (email) => {
   }
 };
 export const fetchUrl = async (url, pdfName) => {
-  const appName =
-    "Excis";
+  const appName = "Excis";
   try {
     const response = await fetch(url);
     if (!response.ok) {
-      alert("something went wrong, please try again later.");
+      alert("something went wrong, refreshing this page may solve this issue.");
       throw new Error("Network response was not ok");
     }
     const blob = await response.blob();
     saveAs(blob, `${sanitizeFileName(pdfName)}_signed_by_${appName}.pdf`);
   } catch (error) {
-    alert("something went wrong, please try again later.");
+    alert("something went wrong, refreshing this page may solve this issue.");
     console.error("Error downloading the file:", error);
   }
 };
-export const getSignedUrl = async (
-  pdfUrl,
-  docId,
-  templateId
-) => {
+export const getSignedUrl = async (pdfUrl, docId, templateId) => {
   //use only axios here due to public template sign
   const axiosRes = await axios.post(
     `${localStorage.getItem("baseUrl")}/functions/getsignedurl`,
@@ -2253,16 +2264,13 @@ export const handleDownloadPdf = async (
     setIsDownloading && setIsDownloading("pdf");
     const docId = pdfDetails?.[0]?.objectId || "";
     try {
-      const url = await getSignedUrl(
-        pdfUrl,
-        docId,
-      );
+      const url = await getSignedUrl(pdfUrl, docId);
       await fetchUrl(url, pdfName);
       setIsDownloading && setIsDownloading("");
     } catch (err) {
       console.log("err in getsignedurl", err);
       setIsDownloading("");
-      alert("something went wrong, please try again later.");
+      alert("something went wrong, refreshing this page may solve this issue.");
     }
   }
 };
@@ -2286,7 +2294,7 @@ export const handleToPrint = async (event, setIsDownloading, pdfDetails) => {
       `${localStorage.getItem("baseUrl")}/functions/getsignedurl`,
       {
         url: pdfUrl,
-        docId: docId,
+        docId: docId
       },
       {
         headers: {
@@ -2320,7 +2328,7 @@ export const handleToPrint = async (event, setIsDownloading, pdfDetails) => {
   } catch (err) {
     setIsDownloading("");
     console.log("err in getsignedurl", err);
-    alert("something went wrong, please try again later.");
+    alert("something went wrong, refreshing this page may solve this issue.");
   }
 };
 
@@ -2330,8 +2338,7 @@ export const handleDownloadCertificate = async (
   setIsDownloading,
   isZip
 ) => {
-  const appName =
-    "Excis";
+  const appName = "Excis";
   if (pdfDetails?.length > 0 && pdfDetails[0]?.CertificateUrl) {
     try {
       await fetch(pdfDetails[0] && pdfDetails[0]?.CertificateUrl);
@@ -2407,7 +2414,7 @@ export const handleDownloadCertificate = async (
     } catch (err) {
       setIsDownloading("certificate_err");
       console.log("err in download in certificate", err);
-      alert("something went wrong, please try again later.");
+      alert("something went wrong, refreshing this page may solve this issue.");
     }
   }
 };
@@ -2415,14 +2422,13 @@ export const handleDownloadCertificate = async (
 export function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // Escape special characters
 }
-export async function findContact(
-  value,
-) {
+export async function findContact(value) {
   try {
     const baseURL = localStorage.getItem("baseUrl");
     const url = `${baseURL}functions/getsigners`;
-    const token =
-          { "X-Parse-Session-Token": localStorage.getItem("accesstoken") };
+    const token = {
+      "X-Parse-Session-Token": localStorage.getItem("accesstoken")
+    };
     const headers = {
       "Content-Type": "application/json",
       "X-Parse-Application-Id": localStorage.getItem("parseAppId"),
@@ -2634,23 +2640,20 @@ export function base64ToArrayBuffer(base64) {
   return bytes.buffer;
 }
 
-export const convertBase64ToFile = async (
-  pdfName,
-  pdfBase64,
-) => {
+export const convertBase64ToFile = async (pdfName, pdfBase64) => {
   const fileName = sanitizeFileName(pdfName) + ".pdf";
-    try {
-        const pdfFile = new Parse.File(fileName, { base64: pdfBase64 });
-        // Save the Parse File if needed
-        const pdfData = await pdfFile.save();
-        const pdfUrl = pdfData.url();
-        const fileRes = await getSecureUrl(pdfUrl);
-        if (fileRes?.url) {
-          return fileRes.url;
-        }
-    } catch (e) {
-      console.log("error in convertbase64tofile", e);
+  try {
+    const pdfFile = new Parse.File(fileName, { base64: pdfBase64 });
+    // Save the Parse File if needed
+    const pdfData = await pdfFile.save();
+    const pdfUrl = pdfData.url();
+    const fileRes = await getSecureUrl(pdfUrl);
+    if (fileRes?.url) {
+      return fileRes.url;
     }
+  } catch (e) {
+    console.log("error in convertbase64tofile", e);
+  }
 };
 export const onClickZoomIn = (scale, zoomPercent, setScale, setZoomPercent) => {
   setScale(scale + 0.1 * scale);
@@ -2868,20 +2871,11 @@ export function generatePdfName(length) {
 
 // Format date and time for the selected timezone
 export const formatTimeInTimezone = (date, timezone) => {
-  return timezone
-    ? new Intl.DateTimeFormat("en-US", {
-        weekday: "short",
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        timeZone: timezone,
-        timeZoneName: "short",
-        hour12: false
-      }).format(date)
+  const nyDate = timezone && toZonedTime(date, timezone);
+  const generatedDate = timezone
+    ? format(nyDate, "EEE, dd MMM yyyy HH:mm:ss zzz", { timeZone: timezone })
     : new Date(date).toUTCString();
+  return generatedDate;
 };
 
 // `usertimezone` is used to get timezone of current user
@@ -2949,13 +2943,10 @@ export const flattenPdf = async (pdfFile) => {
 };
 
 export const mailTemplate = (param) => {
-  const appName =
-    "Excis";
-  const logo =
-        `<div style='padding:10px'><img src='https://www.excis.com/assets/images/main-logo.png' height='50' /></div>`;
+  const appName = "Excis";
+  const logo = `<div style='padding:10px'><img src='https://www.excis.com/assets/images/main-logo.png' height='50' /></div>`;
 
-  const opurl =
-        ` <a href='https://www.excis.com' target=_blank>here</a>.</p></div></div></body></html>`;
+  const opurl = ` <a href='https://www.opensignlabs.com' target=_blank>here</a>.</p></div></div></body></html>`;
 
   const subject = `${param.senderName} has requested you to sign "${param.title}"`;
   const body =
@@ -2983,3 +2974,15 @@ export const mailTemplate = (param) => {
 
   return { subject, body };
 };
+
+export function formatDateTime(date, dateFormat, timeZone, is12Hour) {
+  const zonedDate = toZonedTime(date, timeZone); // Convert date to the given timezone
+  const timeFormat = is12Hour ? "hh:mm:ss a" : "HH:mm:ss";
+  return dateFormat
+    ? format(
+        zonedDate,
+        `${selectFormat(dateFormat)}, ${timeFormat} 'GMT' XXX`,
+        { timeZone }
+      )
+    : formatTimeInTimezone(date, timeZone);
+}

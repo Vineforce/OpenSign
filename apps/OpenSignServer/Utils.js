@@ -138,131 +138,6 @@ export const updateMailCount = async (extUserId, plan, monthchange) => {
   }
 };
 
-export function formatWidgetOptions(type, options) {
-  const colorsArr = ['red', 'black', 'blue', 'yellow'];
-  const fontSizes = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28];
-  const status = options?.required === true ? 'required' : 'optional' || 'required';
-  const defaultValue = options?.default || '';
-  const values = options?.values || [];
-  const color = options?.color ? options.color : 'black';
-  const fontColor = colorsArr.includes(color) ? color : 'black';
-  const size = options?.fontsize ? parseInt(options.fontsize) : 12;
-  const fontSize = fontSizes.includes(size) ? size : 12;
-  switch (type) {
-    case 'signature':
-      return { name: 'signature', status: 'required' };
-    case 'stamp':
-      return { status: status, name: 'stamp' };
-    case 'initials':
-      return { status: status, name: options.name || 'initials' };
-    case 'image':
-      return { status: status, name: options.name || 'image' };
-    case 'email':
-      return {
-        status: status,
-        name: options.name || 'email',
-        validation: { type: 'email' },
-        fontColor: fontColor,
-        fontSize: fontSize,
-      };
-    case 'name':
-      return {
-        status: status,
-        name: options.name || 'name',
-        fontColor: fontColor,
-        fontSize: fontSize,
-      };
-    case 'job title':
-      return {
-        status: status,
-        name: options.name || 'job title',
-        fontColor: fontColor,
-        fontSize: fontSize,
-      };
-    case 'company':
-      return {
-        status: status,
-        name: options.name || 'company',
-        fontColor: fontColor,
-        fontSize: fontSize,
-      };
-    case 'date': {
-      let today = new Date();
-      let dd = String(today.getDate()).padStart(2, '0');
-      let mm = String(today.getMonth() + 1).padStart(2, '0'); // January is 0!
-      let yyyy = today.getFullYear();
-      today = dd + '-' + mm + '-' + yyyy;
-      let dateFormat = options?.format;
-      dateFormat = dateFormat.replace(/m/g, 'M');
-      return {
-        status: status,
-        name: options.name || 'date',
-        response: defaultValue || today,
-        validation: { format: dateFormat || 'dd-MM-yyyy', type: 'date-format' },
-        fontColor: fontColor,
-        fontSize: fontSize,
-      };
-    }
-    case 'textbox':
-      return {
-        status: status,
-        name: 'textbox',
-        defaultValue: defaultValue,
-        hint: options.hint,
-        validation: { type: 'regex', pattern: options?.regularexpression || '/^[a-zA-Z0-9s]+$/' },
-        fontColor: fontColor,
-        fontSize: fontSize,
-        isReadOnly: options?.readonly || false,
-      };
-    case 'checkbox': {
-      const arr = options?.values;
-      let selectedvalues = [];
-      for (const obj of options.selectedvalues) {
-        const index = arr.indexOf(obj);
-        selectedvalues.push(index);
-      }
-      return {
-        status: status,
-        name: options.name || 'checkbox',
-        values: values,
-        isReadOnly: options?.readonly || false,
-        isHideLabel: options?.hidelabel || false,
-        validation: {
-          minRequiredCount: options?.validation?.minselections || 0,
-          maxRequiredCount: options?.validation?.maxselections || 0,
-        },
-        defaultValue: selectedvalues || [],
-        fontColor: fontColor,
-        fontSize: fontSize,
-      };
-    }
-    case 'radio button': {
-      return {
-        status: status,
-        name: options.name || 'radio',
-        values: values,
-        isReadOnly: options?.readonly || false,
-        isHideLabel: options?.hidelabel || false,
-        defaultValue: defaultValue,
-        fontColor: fontColor,
-        fontSize: fontSize,
-      };
-    }
-    case 'dropdown':
-      return {
-        status: status,
-        name: options.name || 'dropdown',
-        values: values,
-        defaultValue: defaultValue,
-        fontColor: fontColor,
-        fontSize: fontSize,
-        isReadOnly: options?.readonly || false,
-      };
-    default:
-      break;
-  }
-}
-
 export function sanitizeFileName(fileName) {
   // Remove spaces and invalid characters
   const file = fileName.replace(/[^a-zA-Z0-9._-]/g, '');
@@ -274,7 +149,6 @@ export const useLocal = process.env.USE_LOCAL ? process.env.USE_LOCAL.toLowerCas
 export const smtpsecure = process.env.SMTP_PORT && process.env.SMTP_PORT !== '465' ? false : true;
 export const smtpenable =
   process.env.SMTP_ENABLE && process.env.SMTP_ENABLE.toLowerCase() === 'true' ? true : false;
-
 
 // `generateId` is used to unique Id for fileAdapter
 export function generateId(length) {
@@ -355,11 +229,9 @@ export const flattenPdf = async pdfFile => {
 export const mailTemplate = param => {
   const themeColor = '#47a3ad';
   const subject = `${param.senderName} has requested you to sign "${param.title}"`;
-  const logo =
-        `<img src='https://excis.com/assets/images/main-logo.png' height='50' />`;
+  const logo = `<img src='https://excis.com/assets/images/main-logo.png' height='50' />`;
 
-  const opurl =
-        ` <a href='https://www.excis.com' target=_blank> here</a>`;
+  const opurl =` <a href='www.opensignlabs.com' target=_blank>here</a>`;
 
   const body =
     "<html><head><meta http-equiv='Content-Type' content='text/html;charset=UTF-8' /></head><body><div style='background-color:#f5f5f5;padding:20px'><div style='background:white;padding-bottom:20px'><div style='padding:10px'>" +
@@ -384,3 +256,42 @@ export const mailTemplate = param => {
 
   return { subject, body };
 };
+
+export const selectFormat = data => {
+  switch (data) {
+    case 'L':
+      return 'MM/dd/yyyy';
+    case 'MM/DD/YYYY':
+      return 'MM/dd/yyyy';
+    case 'DD-MM-YYYY':
+      return 'dd-MM-yyyy';
+    case 'DD/MM/YYYY':
+      return 'dd/MM/yyyy';
+    case 'LL':
+      return 'MMMM dd, yyyy';
+    case 'DD MMM, YYYY':
+      return 'dd MMM, yyyy';
+    case 'YYYY-MM-DD':
+      return 'yyyy-MM-dd';
+    case 'MM-DD-YYYY':
+      return 'MM-dd-yyyy';
+    case 'MM.DD.YYYY':
+      return 'MM.dd.yyyy';
+    case 'MMM DD, YYYY':
+      return 'MMM dd, yyyy';
+    case 'MMMM DD, YYYY':
+      return 'MMMM dd, yyyy';
+    case 'DD MMMM, YYYY':
+      return 'dd MMMM, yyyy';
+    default:
+      return 'MM/dd/yyyy';
+  }
+};
+
+export function formatDateTime(date, dateFormat, timeZone, is12Hour) {
+  const zonedDate = toZonedTime(date, timeZone); // Convert date to the given timezone
+  const timeFormat = is12Hour ? 'hh:mm:ss a' : 'HH:mm:ss';
+  return dateFormat
+    ? format(zonedDate, `${selectFormat(dateFormat)}, ${timeFormat} 'GMT' XXX`, { timeZone })
+    : formatTimeInTimezone(date, timeZone);
+}

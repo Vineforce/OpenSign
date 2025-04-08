@@ -1,19 +1,11 @@
-import React, {
-  useState,
-} from "react";
-import {
-  getFileName
-} from "../../constant/Utils";
+import React, { useState } from "react";
+import { getFileName } from "../../constant/Utils";
 import { useTranslation } from "react-i18next";
 import { Tooltip } from "react-tooltip";
 import SignersInput from "../shared/fields/SignersInput";
 
-const EditTemplate = ({
-  template,
-  onSuccess,
-}) => {
-  const appName =
-    "Excis";
+const EditTemplate = ({ template, onSuccess }) => {
+  const appName = "Excis";
   const { t } = useTranslation();
   const [formData, setFormData] = useState({
     Name: template?.Name || "",
@@ -64,6 +56,13 @@ const EditTemplate = ({
     const IsEnableOTP = formData.IsEnableOTP === "true" ? true : false;
     const allowModify = formData?.AllowModifications || false;
     let reminderDate = {};
+    const remindOnceInEvery = formData?.RemindOnceInEvery;
+    const TimeToCompleteDays = parseInt(formData?.TimeToCompleteDays);
+    const reminderCount = TimeToCompleteDays / remindOnceInEvery;
+    if (AutoReminder && reminderCount > 15) {
+      alert(t("only-15-reminder-allowed"));
+      return;
+    }
     if (AutoReminder) {
       const RemindOnceInEvery = parseInt(formData?.RemindOnceInEvery);
       const ReminderDate = new Date(template?.createdAt);
@@ -189,7 +188,7 @@ const EditTemplate = ({
               <Tooltip id="istourenabled-tooltip" className="z-50">
                 <div className="max-w-[200px] md:max-w-[450px]">
                   <p className="font-bold">{t("enable-tour")}</p>
-                  <p className="p-[5px]">
+                  <div className="p-[5px]">
                     <ol className="list-disc">
                       <li>
                         <span className="font-bold">{t("yes")}: </span>
@@ -200,7 +199,7 @@ const EditTemplate = ({
                         <span>{t("istourenabled-help.p2")}</span>
                       </li>
                     </ol>
-                  </p>
+                  </div>
                   <p>{t("istourenabled-help.p3", { appName: appName })}</p>
                 </div>
               </Tooltip>
@@ -247,11 +246,7 @@ const EditTemplate = ({
               </Tooltip>
             </label>
             <div className="flex flex-col md:flex-row md:gap-4">
-              <div
-                className={
-                  `flex items-center gap-2 ml-2 mb-1`
-                }
-              >
+              <div className={`flex items-center gap-2 ml-2 mb-1`}>
                 <input
                   className="mr-[2px] op-radio op-radio-xs"
                   type="radio"
@@ -260,11 +255,7 @@ const EditTemplate = ({
                 />
                 <div className="text-center">{t("yes")}</div>
               </div>
-              <div
-                className={
-                  `flex items-center gap-2 ml-2 mb-1`
-                }
-              >
+              <div className={`flex items-center gap-2 ml-2 mb-1`}>
                 <input
                   className="mr-[2px] op-radio op-radio-xs"
                   type="radio"

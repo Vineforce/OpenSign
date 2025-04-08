@@ -40,7 +40,8 @@ import {
   convertBase64ToFile,
   generatePdfName,
   handleRemoveWidgets,
-  compressedFileSize
+  compressedFileSize,
+  addWidgetSelfsignOptions
 } from "../constant/Utils";
 import { useParams } from "react-router";
 import Tour from "reactour";
@@ -66,8 +67,7 @@ import LoaderWithMsg from "../primitives/LoaderWithMsg";
 function SignYourSelf() {
   const { t } = useTranslation();
   const { docId } = useParams();
-  const appName =
-    "Excis";
+  const appName = "Excis";
   const divRef = useRef(null);
   const nodeRef = useRef(null);
   const imageRef = useRef(null);
@@ -124,7 +124,6 @@ function SignYourSelf() {
   const [pdfLoad, setPdfLoad] = useState(false);
   const [isAlert, setIsAlert] = useState({ isShow: false, alertMessage: "" });
   const [isDontShow, setIsDontShow] = useState(false);
-  const [extUserId, setExtUserId] = useState("");
   const [isCompleted, setIsCompleted] = useState(false);
   const [isCelebration, setIsCelebration] = useState(false);
   const [pdfArrayBuffer, setPdfArrayBuffer] = useState("");
@@ -146,6 +145,7 @@ function SignYourSelf() {
     isVisible: false,
     signId: ""
   });
+  const [owner, setOwner] = useState({});
   const [, drop] = useDrop({
     accept: "BOX",
     drop: (item, monitor) => addPositionOfSignature(item, monitor),
@@ -206,8 +206,8 @@ function SignYourSelf() {
       const documentData = await contractDocument(documentId);
 
       if (documentData && documentData.length > 0) {
+        setOwner(documentData?.[0]?.ExtUserPtr);
         setPdfDetails(documentData);
-        setExtUserId(documentData[0]?.ExtUserPtr?.objectId);
         const placeholders =
           documentData[0]?.Placeholders?.length > 0
             ? documentData[0]?.Placeholders
@@ -252,7 +252,11 @@ function SignYourSelf() {
         documentData === "Error: Something went wrong!" ||
         (documentData.result && documentData.result.error)
       ) {
-        setHandleError(t("something-went-wrong-mssg"));
+        if (documentData?.result?.error?.includes("deleted")) {
+          setHandleError(t("document-deleted"));
+        } else {
+          setHandleError(t("something-went-wrong-mssg"));
+        }
         setIsLoading({ isLoad: false });
       } else {
         setHandleError(t("no-data-avaliable"));
@@ -324,7 +328,7 @@ function SignYourSelf() {
       }
     } catch (err) {
       console.log("Error: error in getDocumentDetails", err);
-      setHandleError("Error: Something went wrong!");
+      setHandleError(t("something-went-wrong-mssg"));
       setIsLoading({ isLoad: false });
     }
   };
@@ -347,54 +351,6 @@ function SignYourSelf() {
     }
   };
 
-  const addWidgetOptions = (type) => {
-    switch (type) {
-      case "signature":
-        return { name: "signature" };
-      case "stamp":
-        return { name: "stamp" };
-      case "checkbox":
-        return { name: "checkbox" };
-      case textWidget:
-        return { name: "text" };
-      case "initials":
-        return { name: "initials" };
-      case "name":
-        return {
-          name: "name",
-          defaultValue: getWidgetValue(type),
-          validation: { type: "text", pattern: "" }
-        };
-      case "company":
-        return {
-          name: "company",
-          defaultValue: getWidgetValue(type),
-          validation: { type: "text", pattern: "" }
-        };
-      case "job title":
-        return {
-          name: "job title",
-          defaultValue: getWidgetValue(type),
-          validation: { type: "text", pattern: "" }
-        };
-      case "date":
-        return {
-          name: "date",
-          response: getDate(),
-          validation: { format: "MM/dd/yyyy", type: "date-format" }
-        };
-      case "image":
-        return { name: "image" };
-      case "email":
-        return {
-          name: "email",
-          defaultValue: getWidgetValue(type),
-          validation: { type: "email", pattern: "" }
-        };
-      default:
-        return {};
-    }
-  };
   //function for setting position after drop signature button over pdf
   const addPositionOfSignature = (item, monitor) => {
     setCurrWidgetsDetails({});
@@ -419,7 +375,7 @@ function SignYourSelf() {
       // `getBoundingClientRect()` is used to get accurate measurement height of the div
       const divHeight = divRef.current.getBoundingClientRect().height;
       const getWidth = widgetTypeExist
-        ? calculateInitialWidthHeight(dragTypeValue, widgetValue).getWidth
+        ? calculateInitialWidthHeight(widgetValue).getWidth
         : defaultWidthHeight(dragTypeValue).width;
       const getHeight = defaultWidthHeight(dragTypeValue).height;
 
@@ -433,7 +389,7 @@ function SignYourSelf() {
         scale: containerScale,
         Width: getWidth,
         Height: getHeight,
-        options: addWidgetOptions(dragTypeValue)
+        options: addWidgetSelfsignOptions(dragTypeValue, getWidgetValue, owner)
       };
       dropData.push(dropObj);
     } else {
@@ -462,7 +418,7 @@ function SignYourSelf() {
         type: dragTypeValue,
         Width: getWidth / (containerScale * scale),
         Height: getHeight / (containerScale * scale),
-        options: addWidgetOptions(dragTypeValue),
+        options: addWidgetSelfsignOptions(dragTypeValue, getWidgetValue, owner),
         scale: containerScale
       };
       dropData.push(dropObj);
@@ -564,11 +520,7 @@ function SignYourSelf() {
     let pdfUrl;
     if (isUploadPdf) {
       const pdfName = generatePdfName(16);
-      pdfUrl = await convertBase64ToFile(
-        pdfName,
-        pdfBase64Url,
-        "",
-      );
+      pdfUrl = await convertBase64ToFile(pdfName, pdfBase64Url, "");
     }
     const widgetsType = ["signature", "stamp", "image", "initials"];
     let updatedXYPosition;
@@ -754,10 +706,7 @@ function SignYourSelf() {
     if (tenantDetails && tenantDetails === "user does not exist!") {
       alert(t("user-not-exist"));
     } else {
-      if (
-        tenantDetails?.CompletionBody &&
-        tenantDetails?.CompletionSubject
-      ) {
+      if (tenantDetails?.CompletionBody && tenantDetails?.CompletionSubject) {
         isCustomCompletionMail = true;
       }
     }
@@ -793,7 +742,7 @@ function SignYourSelf() {
       pdfFile: base64Url,
       docId: documentId,
       isCustomCompletionMail: isCustomCompletionMail,
-      signature: suffixbase64,
+      signature: suffixbase64
     };
     const resSignPdf = await Parse.Cloud.run("signPdf", params);
     if (resSignPdf) {
@@ -1371,13 +1320,10 @@ function SignYourSelf() {
                 {/*render email component to send email after finish signature on document */}
                 <EmailComponent
                   isEmail={isEmail}
-                  pdfUrl={pdfUrl}
                   setIsEmail={setIsEmail}
-                  pdfDetails={pdfDetails}
                   setSuccessEmail={setSuccessEmail}
-                  sender={jsonSender}
+                  pdfDetails={pdfDetails}
                   setIsAlert={setIsAlert}
-                  extUserId={extUserId}
                   setIsDownloadModal={setIsDownloadModal}
                 />
                 {/* pdf header which contain funish back button */}

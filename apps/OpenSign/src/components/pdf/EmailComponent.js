@@ -1,105 +1,35 @@
 import React, { useState } from "react";
-import axios from "axios";
 import { handleToPrint } from "../../constant/Utils";
-import { themeColor, emailRegex } from "../../constant/const";
+import { emailRegex } from "../../constant/const";
 import Loader from "../../primitives/Loader";
 import ModalUi from "../../primitives/ModalUi";
 import { useTranslation } from "react-i18next";
+import Parse from "parse";
 
 function EmailComponent({
   isEmail,
-  pdfUrl,
   setIsEmail,
   setSuccessEmail,
   pdfDetails,
-  sender,
   setIsAlert,
-  extUserId,
   setIsDownloadModal
 }) {
   const { t } = useTranslation();
-  const appName =
-    "Excis";
+  const appName = "Excis";
   const [emailList, setEmailList] = useState([]);
   const [emailValue, setEmailValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [emailErr, setEmailErr] = useState(false);
   const [isDownloading, setIsDownloading] = useState("");
   const isAndroid = /Android/i.test(navigator.userAgent);
+
   //function for send email
   const sendEmail = async () => {
-    const pdfName = pdfDetails[0]?.Name;
     setIsLoading(true);
-    let sendMail;
-    const docId = pdfDetails?.[0]?.objectId || "";
-    let presignedUrl = pdfUrl;
-    try {
-      const axiosRes = await axios.post(
-        `${localStorage.getItem("baseUrl")}/functions/getsignedurl`,
-        {
-          url: pdfUrl,
-          docId: docId,
-        },
-        {
-          headers: {
-            "content-type": "Application/json",
-            "X-Parse-Application-Id": localStorage.getItem("parseAppId"),
-            "X-Parse-Session-Token": localStorage.getItem("accesstoken")
-          }
-        }
-      );
-      presignedUrl = axiosRes.data.result;
-    } catch (err) {
-      console.log("err in getsignedurl", err);
-    }
-    for (let i = 0; i < emailList.length; i++) {
-      try {
-        const imgPng =
-          "https://www.excis.com/assets/images/main-logo.png";
-
-        let url = `${localStorage.getItem("baseUrl")}functions/sendmailv3`;
-        const headers = {
-          "Content-Type": "application/json",
-          "X-Parse-Application-Id": localStorage.getItem("parseAppId"),
-          sessionToken: localStorage.getItem("accesstoken")
-        };
-        const openSignUrl = "https://www.excis.com";
-        const themeBGcolor = themeColor;
-        const logo =
-              `<img src='https://www.excis.com/assets/images/main-logo.png' height='50' style='padding:20px'/>`;
-        const opurl =
-              ` <a href='https://www.excis.com' target=_blank> here</a>`;
-
-        let params = {
-          extUserId: extUserId,
-          pdfName: pdfName,
-          url: presignedUrl,
-          recipient: emailList[i],
-          subject: `${sender.name} has signed the doc - ${pdfName}`,
-          replyto:
-            pdfDetails?.[0]?.ExtUserPtr?.Email ||
-            "",
-          from:
-            sender.email,
-          html:
-            `<html><head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8'/></head><body><div style='background-color:#f5f5f5;padding:20px'><div style='background-color:white'><div>` +
-            `${logo}</div><div style='padding:2px;font-family:system-ui;background-color:${themeColor}'><p style='font-size:20px;font-weight:400;color:white;padding-left:20px'>Document Copy</p></div><div>` +
-            `<p style='padding:20px;font-family:system-ui;font-size:14px'>A copy of the document <strong>${pdfName}</strong> is attached to this email. Kindly download the document from the attachment.</p>` +
-            `</div></div><div><p>This is an automated email from ${appName}. For any queries regarding this email, please contact the sender ${sender.email} directly. ` +
-            `If you think this email is inappropriate or spam, you may file a complaint with ${appName}${opurl}.</p></div></div></body></html>`
-        };
-        sendMail = await axios.post(url, params, { headers: headers });
-      } catch (error) {
-        console.log("error", error);
-        setIsLoading(false);
-        setIsEmail(false);
-        setIsAlert({
-          isShow: true,
-          alertMessage: t("something-went-wrong-mssg")
-        });
-      }
-    }
-    if (sendMail?.data?.result?.status === "success") {
+    const params = { docId: pdfDetails?.[0]?.objectId, recipients: emailList };
+    const sendmail = await Parse.Cloud.run("forwarddoc", params);
+    console.log("sendmail ", sendmail);
+    if (sendmail?.status === "success") {
       setSuccessEmail(true);
       setIsEmail(false);
       setTimeout(() => {
@@ -178,7 +108,7 @@ function EmailComponent({
             </div>
           )}
           <div className="flex justify-between items-center py-[10px] px-[20px] border-b-[1px] border-base-content">
-            <span className="text-base-content font-semibold">
+            <span className="text-base-content font-bold text-sm md:text-lg">
               {t("successfully-signed")}
             </span>
             <div className="flex flex-row">
@@ -187,14 +117,14 @@ function EmailComponent({
                   onClick={(e) =>
                     handleToPrint(e, setIsDownloading, pdfDetails)
                   }
-                  className="op-btn op-btn-neutral op-btn-sm text-[15px]"
+                  className="op-btn op-btn-neutral op-btn-sm text-xs md:text-[15px]"
                 >
                   <i className="fa-light fa-print" aria-hidden="true"></i>
                   {t("print")}
                 </button>
               )}
               <button
-                className="op-btn op-btn-primary op-btn-sm text-[15px] ml-2"
+                className="op-btn op-btn-primary op-btn-sm text-xs md:text-[15px] ml-2"
                 onClick={() => {
                   handleClose();
                   setIsDownloadModal(true);
@@ -210,12 +140,12 @@ function EmailComponent({
               {t("email-mssg")}
             </p>
             {emailList.length > 0 ? (
-              <div className="p-0 border-[1.5px] op-border-primary rounded w-full text-[15px]">
+              <div className="p-0 border-[1px] op-border-primary w-full rounded-md text-[15px] overflow-hidden">
                 <div className="flex flex-row flex-wrap">
                   {emailList.map((data, ind) => {
                     return (
                       <div
-                        className="flex flex-row items-center op-bg-primary m-[4px] rounded-md py-[5px] px-[10px]"
+                        className="flex flex-row items-center op-bg-primary mx-[2px] mt-[2px] rounded-md py-[5px] px-[10px]"
                         key={ind}
                       >
                         <span className="text-base-100 text-[13px]">
@@ -235,7 +165,7 @@ function EmailComponent({
                   <input
                     type="email"
                     value={emailValue}
-                    className="p-[10px] pb-[20px] rounded w-full text-[15px] bg-transparent outline-none"
+                    className="p-[10px] rounded-md w-full text-[15px] bg-transparent outline-none"
                     onChange={handleEmailValue}
                     onKeyDown={handleEnterPress}
                     onBlur={() => emailValue && handleEnterPress("add")}
@@ -252,7 +182,7 @@ function EmailComponent({
                 <input
                   type="email"
                   value={emailValue}
-                  className="p-[10px] pb-[20px] rounded w-full text-[15px] outline-none bg-transparent border-[1.5px] op-border-primary"
+                  className="p-[10px] pb-[20px] rounded-md w-full text-[15px] outline-none bg-transparent border-[1px] op-border-primary"
                   onChange={handleEmailValue}
                   onKeyDown={handleEnterPress}
                   placeholder={t("enter-email-plaholder")}
@@ -270,7 +200,7 @@ function EmailComponent({
                 {t("email-error-1")}
               </p>
             )}
-            <button
+            {/* <button
               className={`${
                 emailValue ? "cursor-pointer" : "cursor-default"
               } op-btn op-btn-primary op-btn-sm m-2 shadow-md`}
@@ -278,26 +208,27 @@ function EmailComponent({
             >
               <i className="fa-light fa-plus" aria-hidden="true"></i>
             </button>
-
             <div className="bg-[#e3e2e1] mt-[10px] p-[5px] rounded">
               <span className="font-bold">{t("report-heading.Note")}: </span>
               <span className="text-[15px]">{t("email-error-2")}</span>
             </div>
-            <hr className="w-full my-[15px] bg-base-content" />
-            <button
-              type="button"
-              className="op-btn op-btn-secondary"
-              onClick={() => emailList.length > 0 && sendEmail()}
-            >
-              {t("send")}
-            </button>
-            <button
-              type="button"
-              className="op-btn op-btn-ghost ml-2"
-              onClick={() => handleClose()}
-            >
-              {t("close")}
-            </button>
+            <hr className="w-full my-[15px] bg-base-content" /> */}
+            <div className="mt-2">
+              <button
+                type="button"
+                className="op-btn op-btn-secondary"
+                onClick={() => emailList.length > 0 && sendEmail()}
+              >
+                {t("send")}
+              </button>
+              <button
+                type="button"
+                className="op-btn op-btn-ghost ml-2"
+                onClick={() => handleClose()}
+              >
+                {t("close")}
+              </button>
+            </div>
           </div>
         </ModalUi>
       )}

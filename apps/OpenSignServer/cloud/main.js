@@ -1,4 +1,3 @@
-
 import PDF from './parsefunction/pdf/PDF.js';
 import sendmailv3 from './parsefunction/sendMailv3.js';
 import usersignup from './parsefunction/usersignup.js';
@@ -22,7 +21,6 @@ import UserAfterFind from './parsefunction/UserAfterFInd.js';
 import SignatureAfterFind from './parsefunction/SignatureAfterFind.js';
 import TenantAterFind from './parsefunction/TenantAfterFind.js';
 import VerifyEmail from './parsefunction/VerifyEmail.js';
-import encryptedpdf from './parsefunction/encryptedPdf.js';
 import { getSignedUrl } from './parsefunction/getSignedUrl.js';
 import createBatchDocs from './parsefunction/createBatchDocs.js';
 import linkContactToDoc from './parsefunction/linkContactToDoc.js';
@@ -51,6 +49,7 @@ import generateCertificatebydocId from './parsefunction/generateCertificatebydoc
 import fileUpload from './parsefunction/fileUpload.js';
 import getUserListByOrg from './parsefunction/getUserListByOrg.js';
 import editContact from './parsefunction/editContact.js';
+import forwardDoc from './parsefunction/ForwardDoc.js';
 import deleteUser from './parsefunction/deleteUser.js';
 import sendMailOnDecline from './parsefunction/SendMailOnDecline.js';
 import updateUseTemplateDate from './parsefunction/pdf/updateUseTemplateDate.js';
@@ -97,7 +96,6 @@ Parse.Cloud.define('getReport', getReport);
 Parse.Cloud.define('getTemplate', GetTemplate);
 Parse.Cloud.define('callwebhook', callWebhook);
 Parse.Cloud.define('verifyemail', VerifyEmail);
-Parse.Cloud.define('encryptedpdf', encryptedpdf);
 Parse.Cloud.define('getsignedurl', getSignedUrl);
 Parse.Cloud.define('batchdocuments', createBatchDocs);
 Parse.Cloud.define('linkcontacttodoc', linkContactToDoc);
@@ -125,6 +123,7 @@ Parse.Cloud.define('generatecertificate', generateCertificatebydocId);
 Parse.Cloud.define('fileupload', fileUpload);
 Parse.Cloud.define('getuserlistbyorg', getUserListByOrg);
 Parse.Cloud.define('editcontact', editContact);
+Parse.Cloud.define('forwarddoc', forwardDoc);
 Parse.Cloud.define('deleteUser', async (request) => {
     const { contractsUserId } = request.params;
     return deleteUser(contractsUserId);
@@ -149,3 +148,4 @@ Parse.Cloud.define('sendMailDocumentSignApprovalRejected',sendMailDocumentSignAp
 Parse.Cloud.define('sendMailOnDecline',sendMailOnDecline);
 Parse.Cloud.define('updateUseTemplateDate',updateUseTemplateDate);
 Parse.Cloud.define('shareWithUsers',shareWithUsers);
+

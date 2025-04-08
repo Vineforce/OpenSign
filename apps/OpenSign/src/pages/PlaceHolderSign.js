@@ -68,8 +68,8 @@ import AddContact from "../primitives/AddContact";
 
 function PlaceHolderSign() {
   const { t } = useTranslation();
-  const appName =
-    "Excis";
+  const copyUrlRef = useRef(null);
+  const appName = "Excis";
   const editorRef = useRef();
   const { state } = useLocation();
   const navigate = useNavigate();
@@ -150,7 +150,6 @@ function PlaceHolderSign() {
     status: false,
     message: ""
   });
-  const [extUserId, setExtUserId] = useState("");
   const [isCustomize, setIsCustomize] = useState(false);
   const [zoomPercent, setZoomPercent] = useState(0);
   const [scale, setScale] = useState(1);
@@ -164,6 +163,7 @@ function PlaceHolderSign() {
   const [userList, setUserList] = useState([]);
   const [isAttchSignerModal, setIsAttchSignerModal] = useState(false);
   const [isNewContact, setIsNewContact] = useState({ status: false, id: "" });
+  const [owner, setOwner] = useState({});
   const isMobile = window.innerWidth < 767;
   const [, drop] = useDrop({
     accept: "BOX",
@@ -313,7 +313,7 @@ function PlaceHolderSign() {
         setPdfArrayBuffer(arrayBuffer);
         setPdfBase64Url(base64Pdf);
       }
-      setExtUserId(documentData[0]?.ExtUserPtr?.objectId);
+      setOwner(documentData?.[0]?.ExtUserPtr);
       const alreadyPlaceholder = documentData[0]?.SignedUrl;
       // Check if document is sent for signing
       if (alreadyPlaceholder) {
@@ -484,7 +484,11 @@ function PlaceHolderSign() {
       documentData === "Error: Something went wrong!" ||
       (documentData.result && documentData.result.error)
     ) {
-      setHandleError(t("something-went-wrong-mssg"));
+      if (documentData?.result?.error?.includes("deleted")) {
+        setHandleError(t("document-deleted"));
+      } else {
+        setHandleError(t("something-went-wrong-mssg"));
+      }
       setIsLoading({ isLoad: false });
     } else {
       setHandleError(t("no-data-avaliable"));
@@ -552,7 +556,7 @@ function PlaceHolderSign() {
           scale: containerScale,
           zIndex: posZIndex,
           type: dragTypeValue,
-          options: addWidgetOptions(dragTypeValue),
+          options: addWidgetOptions(dragTypeValue, owner),
           Width: widgetWidth / (containerScale * scale),
           Height: widgetHeight / (containerScale * scale)
         };
@@ -583,7 +587,7 @@ function PlaceHolderSign() {
           scale: containerScale,
           zIndex: posZIndex,
           type: dragTypeValue,
-          options: addWidgetOptions(dragTypeValue),
+          options: addWidgetOptions(dragTypeValue, owner),
           Width: widgetWidth / (containerScale * scale),
           Height: widgetHeight / (containerScale * scale)
         };
@@ -890,11 +894,7 @@ function PlaceHolderSign() {
           scale
         );
         const pdfName = generatePdfName(16);
-        const pdfUrl = await convertBase64ToFile(
-          pdfName,
-          pdfBase64,
-          "",
-        );
+        const pdfUrl = await convertBase64ToFile(pdfName, pdfBase64, "");
         const tenantId = localStorage.getItem("TenantId");
         const buffer = atob(pdfBase64);
         SaveFileSize(buffer.length, pdfUrl, tenantId);
@@ -906,11 +906,7 @@ function PlaceHolderSign() {
     } else if (pdfBase64Url) {
       try {
         const pdfName = generatePdfName(16);
-        const pdfUrl = await convertBase64ToFile(
-          pdfName,
-          pdfBase64Url,
-          "",
-        );
+        const pdfUrl = await convertBase64ToFile(pdfName, pdfBase64Url, "");
         return pdfUrl;
       } catch (err) {
         console.log("error to convertBase64ToFile in placeholder flow", err);
@@ -1016,11 +1012,7 @@ function PlaceHolderSign() {
     let pdfUrl;
     if (isUploadPdf) {
       const pdfName = generatePdfName(16);
-      pdfUrl = await convertBase64ToFile(
-        pdfName,
-        pdfBase64Url,
-        "",
-      );
+      pdfUrl = await convertBase64ToFile(pdfName, pdfBase64Url, "");
     }
     try {
       const docCls = new Parse.Object("contracts_Document");
@@ -1138,6 +1130,9 @@ function PlaceHolderSign() {
 
   const copytoclipboard = (text) => {
     copytoData(text);
+    if (copyUrlRef.current) {
+      copyUrlRef.current.textContent = text; // Update text safely
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 1500); // Reset copied state after 1.5 seconds
   };
@@ -1196,8 +1191,7 @@ function PlaceHolderSign() {
       year: "numeric"
     });
 
-    let senderEmail =
-      pdfDetails?.[0]?.ExtUserPtr?.Email;
+    let senderEmail = pdfDetails?.[0]?.ExtUserPtr?.Email;
     let senderPhone = pdfDetails?.[0]?.ExtUserPtr?.Phone;
     let signerMail = signersdata.slice();
 
@@ -1226,16 +1220,11 @@ function PlaceHolderSign() {
         const orgName = pdfDetails[0]?.ExtUserPtr.Company
           ? pdfDetails[0].ExtUserPtr.Company
           : "";
-        const senderName =
-          pdfDetails?.[0].ExtUserPtr.Name;
+        const senderName = pdfDetails?.[0].ExtUserPtr.Name;
         const documentName = `${pdfDetails?.[0].Name}`;
         let replaceVar;
 
-        if (
-          requestBody &&
-          requestSubject &&
-          isCustomize
-        ) {
+        if (requestBody && requestSubject && isCustomize) {
           const replacedRequestBody = requestBody.replace(/"/g, "'");
           htmlReqBody =
             "<html><head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8' /></head><body>" +
@@ -1259,10 +1248,7 @@ function PlaceHolderSign() {
             htmlReqBody,
             variables
           );
-        } else if (
-          tenantMailTemplate?.body &&
-          tenantMailTemplate?.subject
-        ) {
+        } else if (tenantMailTemplate?.body && tenantMailTemplate?.subject) {
           const mailBody = tenantMailTemplate?.body;
           const mailSubject = tenantMailTemplate?.subject;
           const replacedRequestBody = mailBody.replace(/"/g, "'");
@@ -1293,14 +1279,13 @@ function PlaceHolderSign() {
           sigingUrl: signPdf
         };
         let params = {
-          extUserId: extUserId,
+          extUserId: owner?.objectId,
           recipient: signerMail[i].Email,
           subject: replaceVar?.subject
             ? replaceVar?.subject
             : mailTemplate(mailparam).subject,
           replyto: senderEmail,
-          from:
-            senderEmail,
+          from: senderEmail,
           html: replaceVar?.body
             ? replaceVar?.body
             : mailTemplate(mailparam).body
@@ -1315,20 +1300,13 @@ function PlaceHolderSign() {
       setMailStatus("success");
       try {
         let data;
-        if (
-          requestBody &&
-          requestSubject &&
-          isCustomize
-        ) {
+        if (requestBody && requestSubject && isCustomize) {
           data = {
             RequestBody: htmlReqBody,
             RequestSubject: requestSubject,
             SendMail: true
           };
-        } else if (
-          tenantMailTemplate?.body &&
-          tenantMailTemplate?.subject
-        ) {
+        } else if (tenantMailTemplate?.body && tenantMailTemplate?.subject) {
           data = {
             RequestBody: tenantMailTemplate?.body,
             RequestSubject: tenantMailTemplate?.subject,
@@ -1607,8 +1585,7 @@ function PlaceHolderSign() {
                   status: defaultdata?.status || "required",
                   hint: defaultdata?.hint || "",
                   defaultValue: defaultdata?.defaultValue || "",
-                  validation:
-                        {},
+                  validation: {},
                   fontSize:
                     fontSize || currWidgetsDetails?.options?.fontSize || 12,
                   fontColor:
@@ -1616,6 +1593,15 @@ function PlaceHolderSign() {
                     currWidgetsDetails?.options?.fontColor ||
                     "black",
                   isReadOnly: defaultdata?.isReadOnly || false
+                }
+              };
+            } else if (["signature"].includes(position.type)) {
+              return {
+                ...position,
+                options: {
+                  ...position.options,
+                  name: defaultdata.name,
+                  hint: defaultdata?.hint || ""
                 }
               };
             } else {
@@ -1626,6 +1612,7 @@ function PlaceHolderSign() {
                   name: defaultdata.name,
                   status: defaultdata.status,
                   defaultValue: defaultdata.defaultValue,
+                  hint: defaultdata?.hint || "",
                   fontSize:
                     fontSize || currWidgetsDetails?.options?.fontSize || 12,
                   fontColor:
@@ -2073,30 +2060,26 @@ function PlaceHolderSign() {
                           {!isCustomize && (
                             <span>{t("placeholder-alert-3")}</span>
                           )}
-                          {
-                              isCustomize && (
-                                <>
-                                  <EmailBody
-                                    editorRef={editorRef}
-                                    requestBody={requestBody}
-                                    requestSubject={requestSubject}
-                                    handleOnchangeRequest={
-                                      handleOnchangeRequest
-                                    }
-                                    setRequestSubject={setRequestSubject}
-                                  />
-                                  <div
-                                    className="flex justify-end items-center gap-1 mt-2 op-link op-link-primary"
-                                    onClick={() => {
-                                      setRequestBody(defaultBody);
-                                      setRequestSubject(defaultSubject);
-                                    }}
-                                  >
-                                    <span>{t("reset-to-default")}</span>
-                                  </div>
-                                </>
-                              )
-                          }
+                          {isCustomize && (
+                            <>
+                              <EmailBody
+                                editorRef={editorRef}
+                                requestBody={requestBody}
+                                requestSubject={requestSubject}
+                                handleOnchangeRequest={handleOnchangeRequest}
+                                setRequestSubject={setRequestSubject}
+                              />
+                              <div
+                                className="flex justify-end items-center gap-1 mt-2 op-link op-link-primary"
+                                onClick={() => {
+                                  setRequestBody(defaultBody);
+                                  setRequestSubject(defaultSubject);
+                                }}
+                              >
+                                <span>{t("reset-to-default")}</span>
+                              </div>
+                            </>
+                          )}
                           <div className="flex flex-row items-center gap-2 md:gap-6 mt-2">
                             <div className="flex flex-row gap-2">
                               <button
@@ -2114,16 +2097,14 @@ function PlaceHolderSign() {
                                 </button>
                               )}
                             </div>
-                            {
-                                !isCustomize && (
-                                  <span
-                                    className="op-link op-link-accent text-sm"
-                                    onClick={() => setIsCustomize(!isCustomize)}
-                                  >
-                                    {t("cutomize-email")}
-                                  </span>
-                                )
-                            }
+                            {!isCustomize && (
+                              <span
+                                className="op-link op-link-accent text-sm"
+                                onClick={() => setIsCustomize(!isCustomize)}
+                              >
+                                {t("cutomize-email")}
+                              </span>
+                            )}
                           </div>
                         </>
                       )}
@@ -2135,6 +2116,11 @@ function PlaceHolderSign() {
                             <span className="h-[1px] w-[20%] bg-[#ccc]"></span>
                           </div>
                           <div className="my-3">{handleShareList()}</div>
+                          <p
+                            id="copyUrl"
+                            ref={copyUrlRef}
+                            className="hidden"
+                          ></p>
                         </>
                       )}
                     </div>
@@ -2161,9 +2147,11 @@ function PlaceHolderSign() {
                           <LottieWithLoader />
                           {pdfDetails[0].SendinOrder ? (
                             <p>
-                              {t("placeholder-mail-alert", {
-                                name: signersdata[0]?.Name
-                              })}
+                              {isCurrUser
+                                ? t("placeholder-mail-alert-you")
+                                : t("placeholder-mail-alert", {
+                                    name: signersdata[0]?.Name
+                                  })}
                             </p>
                           ) : (
                             <p>{t("placeholder-alert-4")}</p>
@@ -2176,7 +2164,11 @@ function PlaceHolderSign() {
                         </div>
                       ) : (
                         <div className="mb-[10px]">
-                          <p>{t("placeholder-alert-6")}</p>
+                          {mailStatus === "dailyquotareached" ? (
+                            <p>{t("daily-quota-reached")}</p>
+                          ) : (
+                            <p>{t("placeholder-alert-6")}</p>
+                          )}
                           {isCurrUser && (
                             <p className="mt-1">{t("placeholder-alert-5")}</p>
                           )}
