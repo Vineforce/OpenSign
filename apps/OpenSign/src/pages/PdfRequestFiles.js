@@ -101,6 +101,7 @@ function PdfRequestFiles(
   const [signerObjectId, setSignerObjectId] = useState();
   const [isUiLoading, setIsUiLoading] = useState(false);
   const [isDecline, setIsDecline] = useState({ isDeclined: false });
+  const [isDocDeclined, setIsDocDeclined] = useState(false);
   const [currentSigner, setCurrentSigner] = useState(false);
   const [isAlert, setIsAlert] = useState({ isShow: false, alertMessage: "" });
   const [unSignedWidgetId, setUnSignedWidgetId] = useState("");
@@ -1299,6 +1300,7 @@ function PdfRequestFiles(
           };     
           const declineNotificationEmailStatus = await Parse.Cloud.run('sendMailOnDecline',Declineparams);          
           setIsDecline(currentDecline);
+          setIsDocDeclined(true);
           setIsUiLoading(false);
         }
       })
@@ -1943,6 +1945,7 @@ function PdfRequestFiles(
                   footerMessage={isDecline.currnt === "Sure"}
                   declineDoc={declineDoc}
                   setIsDecline={setIsDecline}
+                  docSignDeclined={isDocDeclined}
                 />
                 {/* this modal is used for show expired alert */}
                 <PdfDeclineModal

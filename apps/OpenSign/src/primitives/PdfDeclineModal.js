@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import "../styles/signature.css";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router";
 
 function CustomModal(props) {
   const { t } = useTranslation();
@@ -10,6 +11,8 @@ function CustomModal(props) {
   const localuser = localStorage.getItem(
     `Parse/${localStorage.getItem("parseAppId")}/currentUser`
   );
+
+  const navigate = useNavigate();
 
   const currentUser = JSON.parse(localuser);
   const isCreator = props?.doc
@@ -27,6 +30,15 @@ function CustomModal(props) {
       alert(t("expiry-date-error"));
     }
   };
+  
+  const handleBackBtn = async () => {
+    if (localStorage.getItem("accesstoken") == null) {
+      navigate('/', { replace: true });
+    }
+    else {
+      navigate(`/dashboard/35KBoSgoAK`);
+    }    
+  };
 
   return (
     props.show && (
@@ -38,6 +50,16 @@ function CustomModal(props) {
           {!isExtendExpiry && (
             <div className="p-[10px] px-[20px]">
               <p className="text-[15px]">{props.bodyMssg && props.bodyMssg}</p>
+            </div>
+          )}
+          {props.docSignDeclined && !isExtendExpiry && (
+            <div className="p-[10px] px-[20px]">
+              <button
+                className="op-btn op-btn-primary px-6 mb-3 mt-1"
+                onClick={() => handleBackBtn()}
+              >
+                Back
+              </button>
             </div>
           )}
           {!isExtendExpiry && (
