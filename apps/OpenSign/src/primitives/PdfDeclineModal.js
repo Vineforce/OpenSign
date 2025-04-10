@@ -44,16 +44,16 @@ function CustomModal(props) {
     props.show && (
       <dialog className="op-modal op-modal-open absolute z-[448]">
         <div className="w-[95%] md:w-[60%] lg:w-[40%] op-modal-box p-0 overflow-y-auto hide-scrollbar text-sm">
-          <h3 className="text-base-content font-bold text-lg pt-[15px] px-[20px]">
+          <h3 className="text-base-content font-bold text-lg pt-[15px] px-[20px] flex justify-center">
             {props?.headMsg && props?.headMsg}
           </h3>
           {!isExtendExpiry && (
-            <div className="p-[10px] px-[20px]">
+            <div className="p-[10px] px-[20px] flex justify-center">
               <p className="text-[15px]">{props.bodyMssg && props.bodyMssg}</p>
             </div>
           )}
           {props.docSignDeclined && !isExtendExpiry && (
-            <div className="p-[10px] px-[20px]">
+            <div className="p-[10px] px-[20px] flex justify-center">
               <button
                 className="op-btn op-btn-primary px-6 mb-3 mt-1"
                 onClick={() => handleBackBtn()}
@@ -93,7 +93,7 @@ function CustomModal(props) {
                   onChange={(e) => setReason(e.target.value)}
                 ></textarea>
               </div>
-              <div className="m-[15px]">
+              <div className="m-[15px] flex justify-center">
                 <button
                   className="op-btn op-btn-primary mr-2 px-6"
                   type="button"
