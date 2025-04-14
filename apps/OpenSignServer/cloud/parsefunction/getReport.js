@@ -47,6 +47,7 @@ export default async function getReport(request) {
                       objectId: extUser.id,
                     },
                   },
+                  { "ShareWithUsers.contracts_Users_Id": { $in: [extUser.id] } }
                 ],
               });
             } else {

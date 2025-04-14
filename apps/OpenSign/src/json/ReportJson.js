@@ -430,6 +430,14 @@ export default function reportJson(id) {
                 redirectUrl: "",
                 action: "sharewith"
               });
+              newItem.subaction.splice(2, 0, {
+                btnId: "btn-sharetemplate-user",
+                btnLabel: "ShareWithUsers",
+                hoverLabel: "Share with users",
+                btnIcon: "fa-light fa-share-nodes",
+                redirectUrl: "",
+                action: "sharewithusers"
+              });
               return newItem;
             }
             return item;

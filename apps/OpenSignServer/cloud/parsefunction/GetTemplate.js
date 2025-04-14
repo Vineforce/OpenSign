@@ -38,6 +38,25 @@ export default async function GetTemplate(request) {
             if (_extUser?.TeamIds && _extUser.TeamIds?.length > 0) {
               let teamsArr = [];
               _extUser?.TeamIds?.forEach(x => (teamsArr = [...teamsArr, ...x.Ancestors]));
+              let userArr = [];
+              let template = new Parse.Query('contracts_Template');
+              template.equalTo('objectId', templateId);
+              template.include('ShareWithUsers');  // Include full objects
+              const templateObj = await template.first({ useMasterKey: true });
+ 
+              if (templateObj) {
+                const sharedUsers = templateObj.get('ShareWithUsers'); // Get array
+                if (Array.isArray(sharedUsers) && sharedUsers.length > 0) {
+                  userArr = sharedUsers.map(user => user.contracts_Users_Id); // Direct property access
+                } else {
+                  userArr = []; // Ensure it's always defined
+                }
+              } else {
+                userArr = []; // Handle case where no template is found
+              }
+              const sharedWithUserQuery = new Parse.Query('contracts_Template');
+              sharedWithUserQuery.containedIn('contracts_Users_Id', userArr);
+              
               // Create the first query
               const sharedWithQuery = new Parse.Query('contracts_Template');
               sharedWithQuery.containedIn('SharedWith', teamsArr);
@@ -49,7 +68,7 @@ export default async function GetTemplate(request) {
                 className: 'contracts_Users',
                 objectId: extUser.id,
               });
-              template = Parse.Query.or(sharedWithQuery, createdByQuery);
+              template = Parse.Query.or(sharedWithQuery, createdByQuery,sharedWithUserQuery);
               template.equalTo('objectId', templateId);
               template.include('ExtUserPtr');
               template.include('Signers');
@@ -85,7 +104,6 @@ export default async function GetTemplate(request) {
         template.include('ExtUserPtr.TenantId');
         template.include('Bcc');
         const res = await template.first({ useMasterKey: true });
-        // console.log("res ", res)
         if (res) {
           const templateRes = JSON.parse(JSON.stringify(res));
           delete templateRes?.ExtUserPtr?.TenantId?.FileAdapters;
