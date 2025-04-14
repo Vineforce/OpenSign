@@ -1,5 +1,7 @@
 import { appName, smtpenable } from '../../Utils.js';
 
+const baseUrl = `${process.env.PUBLIC_URL}`;
+
 async function getApproversEmail(docId) {
   try {
     const query = new Parse.Query('contracts_Document');
@@ -33,7 +35,7 @@ async function sendMailDocumentApproval(request) {
     <div style='padding: 2px; font-family: system-ui; !important;'><div style='box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 12px;background-color:white;'>
     <div style='background-color:red;padding:2px;font-family:system-ui; background-color:#47a3ad;'>
     <p style='font-size:20px;font-weight:400;color:white;padding-left:20px'>Document Approval Notification</p></div><div style='padding:20px'>
-    <p style='font-family:system-ui;font-size:14px'>You have a document in ${appName} for approval. Please click <a href='https://docusign.excis.me' target='_blank'
+    <p style='font-family:system-ui;font-size:14px'>You have a document in ${appName} for approval. Please click <a href= ${baseUrl} target='_blank'
     rel='noopener noreferrer'> here </a>to login and approve the document</p>
     <p style='text-decoration: none; font-weight: bolder; color:blue;font-size:45px;margin:20px'></p></div></div></div></div>    
     <div style='background-color: #f5f5f5;'>
