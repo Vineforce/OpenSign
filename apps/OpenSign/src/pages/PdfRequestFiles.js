@@ -322,6 +322,42 @@ function PdfRequestFiles(
         if (currUserId) {
           setSignerObjectId(currUserId);
         }
+        // Code for Auto populating name of the Signer
+        const contactIdSafe = contactId?.trim() || currUserId;
+        const contactDetail = await Parse.Cloud.run('getcontact', { contactId: contactIdSafe });
+        const contactName = contactDetail?.get('Name')?.trim();
+              
+        if (contactName) {
+          setTimeout(() => {
+            // Update placeholders, but ONLY for the matching signer
+            const updatedPlaceholders = (documentData[0]?.Placeholders ?? []).map(signer => {
+              const signerId = signer?.signerObjId ?? signer?.signerPtr?.objectId;
+              // Skip everyone except the matched signer
+              if (signerId !== contactIdSafe) {
+                return signer;
+              }
+              // This signer matches – patch their “name” fields if they’re still empty
+              const patchedPlaceHolder = signer.placeHolder.map(ph => {
+                const patchedPos = ph.pos.map(pos => {
+                  if (pos?.type === 'name' && (!pos.options?.response || !pos.options.response.trim())) {
+                    return {
+                      ...pos,
+                      options: {
+                        ...pos.options,
+                        response: contactName
+                      }
+                    };
+                  }
+                  return pos;
+                });
+                return { ...ph, pos: patchedPos };
+              });
+              return { ...signer, placeHolder: patchedPlaceHolder };
+            });
+            setSignerPos(updatedPlaceholders);
+          }, 50);
+        } 
+
         if (documentData[0].SignedUrl) {
           setPdfUrl(documentData[0].SignedUrl);
         } else {
