@@ -324,9 +324,11 @@ function PdfRequestFiles(
         }
         // Code for Auto populating name of the Signer
         const contactIdSafe = contactId?.trim() || currUserId;
-        const contactDetail = await Parse.Cloud.run('getcontact', { contactId: contactIdSafe });
-        const contactName = contactDetail?.get('Name')?.trim();
-              
+        let contactDetail = null;
+        if (contactIdSafe && contactIdSafe.trim() !== '') {
+          contactDetail = await Parse.Cloud.run('getcontact', { contactId: contactIdSafe });
+        }
+        const contactName = contactDetail?.get('Name')?.trim() || '';
         if (contactName) {
           setTimeout(() => {
             // Update placeholders, but ONLY for the matching signer
