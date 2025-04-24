@@ -109,7 +109,7 @@ function AgreementContent(props) {
               </a>
 
               <span>{t("term-cond-p30")}</span>
-              <span className="font-medium"> info@vineforce.net </span>
+              <span className="font-medium"> info@excis.com </span>
           <hr className="bg-[#9f9f9f] w-full my-[15px]" />
           <div className="mt-6 flex justify-start gap-2">
             <button
