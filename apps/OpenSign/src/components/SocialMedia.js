@@ -48,7 +48,7 @@ const SocialMedia = () => {
         </span>
       </NavLink>
       <NavLink
-        to="mailto:info@vineforce.net"
+        to="mailto:info@excis.com"
         target="_blank"
         rel="noopener noreferrer"
       >
