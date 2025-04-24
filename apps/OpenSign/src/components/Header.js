@@ -151,7 +151,7 @@ const Header = ({ showSidebar, setIsMenu, isConsole }) => {
             >
               {!isConsole && (
                 <>
-                    <li
+                    {/* <li
                       onClick={() =>
                         openInNewTab("https://docs.opensignlabs.com")
                       }
@@ -159,7 +159,7 @@ const Header = ({ showSidebar, setIsMenu, isConsole }) => {
                       <span>
                         <i className="fa-light fa-book"></i> {t("docs")}
                       </span>
-                    </li>
+                    </li> */}
                   <li
                     onClick={() => {
                       setIsOpen(false);
