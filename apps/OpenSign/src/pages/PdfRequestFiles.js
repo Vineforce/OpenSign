@@ -740,10 +740,38 @@ function PdfRequestFiles(
                 //get all required type widgets except checkbox and radio
                 const requiredWidgets = checkUser[0].placeHolder[i].pos.filter(
                   (position) =>
-                    position.options?.status === "required" &&
-                    position.type !== radioButtonWidget &&
-                    position.type !== "checkbox"
-                );
+                  position.options?.status === "required" &&
+                  position.type !== radioButtonWidget &&
+                  position.type !== "checkbox"
+                )// code to add current date for current signer
+                .map((position) => {
+                  if (position.type === "date" && !position.options.response) {
+                    const today = new Date();
+                    const format = position.options?.validation?.format || "MM/dd/yyyy";
+                    const formatDate = (date, format) => {
+                      const day = String(date.getDate()).padStart(2, '0');
+                      const month = String(date.getMonth() + 1).padStart(2, '0');
+                      const year = date.getFullYear();
+                      const monthNameShort = date.toLocaleString('default', { month: 'short' }); 
+                      const monthNameLong = date.toLocaleString('default', { month: 'long' }); 
+              
+                      switch (format) {
+                        case "MM/dd/yyyy": return `${month}/${day}/${year}`;
+                        case "dd-MM-yyyy": return `${day}-${month}-${year}`;
+                        case "yyyy-MM-dd": return `${year}-${month}-${day}`;
+                        case "MM.dd.yyyy": return `${month}.${day}.${year}`;
+                        case "dd MMM yyyy": return `${day} ${monthNameShort} ${year}`;
+                        case "MMM dd, yyyy": return `${monthNameShort} ${day}, ${year}`;
+                        case "MMMM dd, yyyy": return `${monthNameLong} ${day}, ${year}`;
+                        case "dd MMMM, yyyy": return `${day} ${monthNameLong}, ${year}`;
+                        default: return `${month}/${day}/${year}`; // Fallback
+                      }
+                    };              
+                    position.options.response = formatDate(today, format);
+                  }
+                  return position;
+                });
+                // code to add current date ended
                 if (requiredWidgets && requiredWidgets?.length > 0) {
                   let checkSigned;
                   for (let i = 0; i < requiredWidgets?.length; i++) {
