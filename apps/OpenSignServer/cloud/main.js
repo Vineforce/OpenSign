@@ -35,6 +35,7 @@ import UpdateExistUserAsAdmin from './parsefunction/UpdateExistUserAsAdmin.js';
 import Newsletter from './parsefunction/Newsletter.js';
 import getTeams from './parsefunction/getTeams.js';
 import getContact from './parsefunction/getContact.js';
+import getContactJson from './parsefunction/getContactJson.js';
 import updateContactTour from './parsefunction/updateContactTour.js';
 import declinedocument from './parsefunction/declinedocument.js';
 import getTenant from './parsefunction/getTenant.js';
@@ -149,3 +150,4 @@ Parse.Cloud.define('sendMailDocumentSignApprovalRejected',sendMailDocumentSignAp
 Parse.Cloud.define('sendMailOnDecline',sendMailOnDecline);
 Parse.Cloud.define('updateUseTemplateDate',updateUseTemplateDate);
 Parse.Cloud.define('shareWithUsers',shareWithUsers);
+Parse.Cloud.define('getContactJson', getContactJson);

@@ -326,9 +326,9 @@ function PdfRequestFiles(
         const contactIdSafe = contactId?.trim() || currUserId;
         let contactDetail = null;
         if (contactIdSafe && contactIdSafe.trim() !== '') {
-          contactDetail = await Parse.Cloud.run('getcontact', { contactId: contactIdSafe });
+          contactDetail = await Parse.Cloud.run('getContactJson', { contactId: contactIdSafe });
         }
-        const contactName = contactDetail?.get('Name')?.trim() || '';
+        const contactName = contactDetail?.Name?.trim() || '';
         if (contactName) {
           setTimeout(() => {
             // Update placeholders, but ONLY for the matching signer
@@ -489,6 +489,14 @@ function PdfRequestFiles(
           currDate > expireUpdateDate ||
           !isTourEnabled
         ) {
+          const userId = contactDetail?.UserId?.id || '';
+          if (userId && userId.trim() !== '') {
+            const defaultSignRes = await getDefaultSignature(userId);
+            if (defaultSignRes?.status === "success") {
+              const sign = defaultSignRes?.res?.defaultSignature || "";
+              setDefaultSignImg(sign);
+            }
+          }
           setRequestSignTour(true);
         } else {
           const isEnableOTP = documentData?.[0]?.IsEnableOTP || false;
