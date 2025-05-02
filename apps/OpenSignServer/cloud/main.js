@@ -55,6 +55,7 @@ import editContact from './parsefunction/editContact.js';
 import deleteUser from './parsefunction/deleteUser.js';
 import sendMailOnDecline from './parsefunction/SendMailOnDecline.js';
 import updateUseTemplateDate from './parsefunction/pdf/updateUseTemplateDate.js';
+import editUser from './parsefunction/editUser.js';
 
 import additionalDocumentOperation from './parsefunction/additionalDocumentOperation.js';
 const {saveAdditionalDocument,removeDocument,getAdditionalDocumentByDocumentId}=additionalDocumentOperation;
@@ -151,3 +152,4 @@ Parse.Cloud.define('sendMailOnDecline',sendMailOnDecline);
 Parse.Cloud.define('updateUseTemplateDate',updateUseTemplateDate);
 Parse.Cloud.define('shareWithUsers',shareWithUsers);
 Parse.Cloud.define('getContactJson', getContactJson);
+Parse.Cloud.define('editUser',editUser);

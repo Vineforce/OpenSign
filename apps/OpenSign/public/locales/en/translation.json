@@ -187,7 +187,8 @@
     "Delete": "Delete",
     "Description":"Description",
     "Approvers":"Approvers",
-    "Additional-document":"Additional Document"
+    "Additional-document":"Additional Document",
+    "Edit-User":"Edit"
   },
   "report-help": {
     "Draft Documents": "These are documents you have started but have not finalized for sending.",
