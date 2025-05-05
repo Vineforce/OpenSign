@@ -37,7 +37,7 @@ const EditUser = ({ userData, handleClose, refreshList, setIsAlert }) => {
         e.stopPropagation();
         try {
             const userIdToUpdate = formdata.userId?.objectId;
-            const params = { userId: userIdToUpdate, name: formdata.name, phoneNumber: formdata.phone, jobtitle: formdata.jobtitle }
+            const params = { userId: userIdToUpdate, name: formdata.name, phoneNumber: formdata.phone, jobtitle: formdata.jobtitle, userRole:formdata.role }
             const res = await Parse.Cloud.run('editUser', params);
             if (res) {
                 if (refreshList) {
@@ -162,7 +162,6 @@ const EditUser = ({ userData, handleClose, refreshList, setIsAlert }) => {
                         }
                         onInput={(e) => e.target.setCustomValidity("")}
                         required
-                        disabled
                     >
                         <option defaultValue={""} value={""}>
                             {t("Select")}

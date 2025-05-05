@@ -19,6 +19,7 @@ export default async function editUser(request) {
             contractUser.set("Name", request.params.name);
             contractUser.set("Phone", request.params.phoneNumber);
             contractUser.set("JobTitle", request.params.jobtitle);
+            contractUser.set("UserRole", "contracts_" + request.params.userRole);
             await contractUser.save(null, { useMasterKey: true });
         }
         return true;
