@@ -7,9 +7,10 @@ import ModalUi from "../primitives/ModalUi";
 import pad from "../assets/images/pad.svg";
 import Tooltip from "../primitives/Tooltip";
 import AddUser from "../components/AddUser";
+import EditUser from "../components/EditUser";
 import Title from "../components/Title";
 import { useTranslation } from "react-i18next";
-const heading = ["Sr.No", "Name", "Email", "Phone", "Role", "Team", "Active", "Delete"];
+const heading = ["Sr.No", "Name", "Email", "Phone", "Role", "Team", "Active","Edit-User", "Delete" ];
 // const actions = [];
 const UserList = () => {
   const { t } = useTranslation();
@@ -30,6 +31,7 @@ const UserList = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [formHeader, setFormHeader] = useState(t("add-user"));
   const [isDeleteModal, setIsDeleteModal] = useState({});
+  const [isEditModal, setIsEditModal] = useState({});
   const [loggedInUserId, setLoggedInUserId] = useState(null);
   const recordperPage = 10;
   const startIndex = (currentPage - 1) * recordperPage; // user per page
@@ -198,6 +200,10 @@ const UserList = () => {
     setIsDeleteModal({ [user.objectId]: true });
   };
 
+  const handleEditClick=(user)=>{    
+    setIsEditModal({ [user.objectId]: true });
+  };
+
   const handleDeleteUser = async (user) => {
     try {
       setIsActLoader({ [user.objectId]: true });
@@ -339,6 +345,33 @@ const UserList = () => {
                               {isAdmin && item.UserRole !== "contracts_Admin" && item.objectId !== loggedInUserId && (
                                 <td className="px-4 py-2">
                                   <button
+                                    onClick={() => handleEditClick(item)}
+                                    disabled={item.UserRole === "contracts_Admin"}
+                                  >
+                                    <div className="op-btn-primary op-btn op-btn-sm mr-1">
+                                      <i className="fa-light fa-pen"></i>
+                                    </div>
+                                  </button>
+                                  {isEditModal[item.objectId] && (
+                                    <ModalUi
+                                      isOpen
+                                      title={`Edit User - ${item.Name || ''}`}
+                                      handleClose={() => setIsEditModal({})}
+                                    >
+                                      <div className="m-[20px]">
+                                      <EditUser userData={item} 
+                                      handleClose={() => setIsEditModal({})}
+                                      refreshList={fetchUserList}
+                                      setIsAlert={setIsAlert} 
+                                      />
+                                      </div>
+                                    </ModalUi>
+                                  )}
+                                </td>
+                              )}
+                              {isAdmin && item.UserRole !== "contracts_Admin" && item.objectId !== loggedInUserId && (
+                                <td className="px-4 py-2">
+                                  <button
                                     onClick={() => handleDeleteClick(item)}
                                     disabled={item.UserRole === "contracts_Admin"}
                                   >
@@ -354,7 +387,7 @@ const UserList = () => {
                                     >
                                       <div className="m-[20px]">
                                         <div className="text-lg font-normal text-black">
-                                          {t("are-you-sure-delete-user")} {item.Name}?
+                                          {t("are-you-sure-delete-user")} &apos;{item.Name}&apos; ?
                                         </div>
                                         <hr className="bg-[#ccc] mt-4 " />
                                         <div className="flex items-center mt-3 gap-2 text-white">
