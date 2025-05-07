@@ -7,7 +7,7 @@ const SocialMedia = () => {
 
   return (
     <React.Fragment>
-      <NavLink
+      {/* <NavLink
         to="https://github.com/Vineforce/OpenSign"
         target="_blank"
         rel="noopener noreferrer"
@@ -16,7 +16,7 @@ const SocialMedia = () => {
         <span className="fa-sr-only">
           OpenSign&apos;s {t("social-media.github")}
         </span>
-      </NavLink>
+      </NavLink> */}
       <NavLink
         to="https://www.linkedin.com/company/excis-compliance"
         target="_blank"
@@ -48,7 +48,7 @@ const SocialMedia = () => {
         </span>
       </NavLink>
       <NavLink
-        to="mailto:info@vineforce.net"
+        to="mailto:info@excis.com"
         target="_blank"
         rel="noopener noreferrer"
       >

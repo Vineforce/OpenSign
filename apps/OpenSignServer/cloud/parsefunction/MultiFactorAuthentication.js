@@ -5,11 +5,27 @@ const APPID = process.env.APP_ID;
 const masterKEY = process.env.MASTER_KEY;
 import { appName, smtpenable } from '../../Utils.js';
 
-async function generateAndSendOTP(email) {
-  const otp = generateOTP();
-
-  await saveOTPToParse(email, otp);
-  await sendOTPEmail(email, otp);
+async function generateAndSendOTP(request) {
+  let twoFactorEnabled = false;
+  const mfaObject = Parse.Object.extend('TwofactorAuthentication_Setting');
+  const mfaObjectQuery = new Parse.Query(mfaObject);
+  mfaObjectQuery.equalTo('UserId', request.params.UserId);
+  let mfaObjectRecord = await mfaObjectQuery.first({ useMasterKey: true });
+  if (mfaObjectRecord) {
+    let IsEnableTwoFactorAuthentication = mfaObjectRecord.get('EnableTwoFactorAuthentication');
+    if (IsEnableTwoFactorAuthentication) {
+      twoFactorEnabled = true;
+    }
+  }
+  if (twoFactorEnabled) {
+    const otp = generateOTP();
+    await saveOTPToParse(request.params.email,request.params.UserId, otp);
+    await sendOTPEmail(request.params.email, otp);
+    return 'OTP-SENT'
+  }
+  else {
+    return '2FA-NOT-ENABLED'
+  }
 }
 
 function generateOTP(length = 6) {
@@ -21,15 +37,16 @@ function generateOTP(length = 6) {
   return otp;
 }
 
-async function saveOTPToParse(email, otp) {
-  const OtpObject = Parse.Object.extend('mfa_Otp');
+async function saveOTPToParse(email,userId, otp) {
+  const OtpObject = Parse.Object.extend('TwofactorAuthentication_Setting');
   const otpQuery = new Parse.Query(OtpObject);
-  otpQuery.equalTo('Email', email);
+  otpQuery.equalTo('UserId', userId);
 
   try {
     let otpRecord = await otpQuery.first({ useMasterKey: true });
 
     if (otpRecord) {
+      otpRecord.set('Email', email);
       otpRecord.set('OTP', otp);
     } else {
       otpRecord = new OtpObject();
@@ -48,7 +65,7 @@ async function saveOTPToParse(email, otp) {
 
 async function sendOTPEmail(email, otp) {
   const mailLogo = 'https://www.excis.com/assets/images/main-logo.png';
-  const subject = 'Your One-Time Password (OTP) for Login';
+  const subject = 'Excis - Your One-Time Password (OTP) for Login';
 
   const body = `
     <html>
@@ -100,7 +117,7 @@ async function AuthLoginWithMFA(request) {
     const otp = String(request.params.otp);
     const email = String(request.params.email);
 
-    const OtpObject = Parse.Object.extend('mfa_Otp');
+    const OtpObject = Parse.Object.extend('TwofactorAuthentication_Setting');
     const checkOtp = new Parse.Query(OtpObject);
 
     checkOtp.equalTo('Email', email);

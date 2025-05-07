@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Menu from "./Menu";
 import Submenu from "./SubMenu";
-import SocialMedia from "./SocialMedia";
+import SocialMedia from "../SocialMedia";
 import dp from "../../assets/images/dp.png";
 import sidebarList, { subSetting } from "../../json/menuJson";
 import { useNavigate } from "react-router";
@@ -40,7 +40,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
             if (item.title === "Settings") {
               // Make a shallow copy of the item
               const newItem = { ...item };
-                const arr = newItem.children.slice(0, 1);
+                const arr = newItem.children.slice(0, 2);
                 newItem.children = [...arr, ...subSetting];
               return newItem;
             }
@@ -52,7 +52,8 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
               if (item.title === "Settings") {
                 // Make a shallow copy of the item
                 const newItem = { ...item };
-                const arr = newItem.children.slice(0, 1);
+                // Added additional option
+                const arr = newItem.children.slice(0, 2);
                 newItem.children = arr;
                 return newItem;
               }
@@ -140,9 +141,9 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
           )}
         </ul>
       </nav>
-      <footer className="mt-4 flex justify-center items-center text-[25px] text-base-content gap-3">
-        <SocialMedia />
-      </footer>
+        <footer className="mt-4 flex justify-center items-center text-[25px] text-base-content gap-3">
+          <SocialMedia />
+        </footer>
     </aside>
   );
 };

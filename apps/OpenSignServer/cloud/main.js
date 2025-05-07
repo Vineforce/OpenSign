@@ -35,6 +35,7 @@ import UpdateExistUserAsAdmin from './parsefunction/UpdateExistUserAsAdmin.js';
 import Newsletter from './parsefunction/Newsletter.js';
 import getTeams from './parsefunction/getTeams.js';
 import getContact from './parsefunction/getContact.js';
+import getContactJson from './parsefunction/getContactJson.js';
 import updateContactTour from './parsefunction/updateContactTour.js';
 import declinedocument from './parsefunction/declinedocument.js';
 import getTenant from './parsefunction/getTenant.js';
@@ -52,8 +53,25 @@ import fileUpload from './parsefunction/fileUpload.js';
 import getUserListByOrg from './parsefunction/getUserListByOrg.js';
 import editContact from './parsefunction/editContact.js';
 import multiFactorAuthentication from './parsefunction/MultiFactorAuthentication.js';
+import MultiFactorAuthenticationSetting from './parsefunction/MultiFactorAuthenticationSetting.js';
 
 const { generateAndSendOTP, AuthLoginWithMFA } = multiFactorAuthentication;
+const { ManageTwoFactorAuthentication, IsTwoFactorAuthenticationEnabled } = MultiFactorAuthenticationSetting;
+
+import deleteUser from './parsefunction/deleteUser.js';
+import sendMailOnDecline from './parsefunction/SendMailOnDecline.js';
+import updateUseTemplateDate from './parsefunction/pdf/updateUseTemplateDate.js';
+import editUser from './parsefunction/editUser.js';
+
+import additionalDocumentOperation from './parsefunction/additionalDocumentOperation.js';
+const {saveAdditionalDocument,removeDocument,getAdditionalDocumentByDocumentId}=additionalDocumentOperation;
+
+import documentSignApprover from './parsefunction/approvalDocumentSign.js';
+const {saveDocumentSignApprover, getApprovers, getDocumentsByApproverId,approveRejectDocumentSign,hasAllApproverApproved}=documentSignApprover;
+
+import documentApproveRejectEmail from './parsefunction/sendMailDocumentApproval.js';
+const { sendMailDocumentApproval, sendMailDocumentSignApprovalRejected } = documentApproveRejectEmail;
+import shareWithUsers from './parsefunction/shareWithUsers.js';
 
 
 // This afterSave function triggers after an object is added or updated in the specified class, allowing for post-processing logic.
@@ -115,8 +133,34 @@ Parse.Cloud.define('generatecertificate', generateCertificatebydocId);
 Parse.Cloud.define('fileupload', fileUpload);
 Parse.Cloud.define('getuserlistbyorg', getUserListByOrg);
 Parse.Cloud.define('editcontact', editContact);
-Parse.Cloud.define('generateAndSendOTP', async (request) => {
-    const { email } = request.params;
-    return generateAndSendOTP(email);
-  });
+Parse.Cloud.define('generateAndSendOTP', generateAndSendOTP);
+
 Parse.Cloud.define('AuthLoginWithMFA',AuthLoginWithMFA)
+Parse.Cloud.define('deleteUser', async (request) => {
+    const { contractsUserId } = request.params;
+    return deleteUser(contractsUserId);
+  });
+
+//These  functions will add/save, get and remove/delete the additional documents
+Parse.Cloud.define('saveAdditionalDocument',saveAdditionalDocument);
+Parse.Cloud.define('removeDocument',removeDocument);
+Parse.Cloud.define('getAdditionalDocumentByDocumentId',getAdditionalDocumentByDocumentId);
+
+// function for document sign approval process
+Parse.Cloud.define('saveDocumentSignApprover', async (request) => {
+  return await saveDocumentSignApprover(request.params); 
+});
+
+Parse.Cloud.define('getDocumentsByApproverId', getDocumentsByApproverId);
+Parse.Cloud.define('getApprovers',getApprovers); 
+Parse.Cloud.define('sendMailDocumentApproval',sendMailDocumentApproval); 
+Parse.Cloud.define('approveRejectDocumentSign',approveRejectDocumentSign);
+Parse.Cloud.define('hasAllApproverApproved',hasAllApproverApproved);
+Parse.Cloud.define('sendMailDocumentSignApprovalRejected',sendMailDocumentSignApprovalRejected);
+Parse.Cloud.define('sendMailOnDecline',sendMailOnDecline);
+Parse.Cloud.define('updateUseTemplateDate',updateUseTemplateDate);
+Parse.Cloud.define('shareWithUsers',shareWithUsers);
+Parse.Cloud.define('getContactJson', getContactJson);
+Parse.Cloud.define('editUser',editUser);
+Parse.Cloud.define('ManageTwoFactorAuthentication',ManageTwoFactorAuthentication);
+Parse.Cloud.define("IsTwoFactorAuthenticationEnabled",IsTwoFactorAuthenticationEnabled);

@@ -30,7 +30,8 @@ const AddUser = (props) => {
     email: "",
     team: "",
     password: "",
-    role: ""
+    role: "",
+    jobtitle:""
   });
   const [isFormLoader, setIsFormLoader] = useState(false);
   const [teamList, setTeamList] = useState([]);
@@ -85,6 +86,10 @@ const AddUser = (props) => {
           extUser.set("Name", formdata.name);
           if (formdata.phone) {
             extUser.set("Phone", formdata.phone);
+          }
+          if(formdata.jobtitle)
+          {
+            extUser.set("JobTitle", formdata.jobtitle);
           }
           extUser.set("Email", formdata.email);
           extUser.set("UserRole", `contracts_${formdata.role}`);
@@ -172,7 +177,8 @@ const AddUser = (props) => {
                 email: "",
                 phone: "",
                 team: "",
-                role: ""
+                role: "",
+                jobtitle:""
               });
             }
           } catch (err) {
@@ -221,7 +227,8 @@ const AddUser = (props) => {
                 email: "",
                 phone: "",
                 team: "",
-                role: ""
+                role: "",
+                jobtitle:""
               });
             }
           }
@@ -244,7 +251,7 @@ const AddUser = (props) => {
 
   // Define a function to handle the "add yourself" checkbox
   const handleReset = () => {
-    setFormdata({ name: "", email: "", phone: "", team: "", role: "" });
+    setFormdata({ name: "", email: "", phone: "", team: "", role: "",jobtitle:"" });
     if (props.closePopup) {
       props.closePopup();
     }
@@ -343,6 +350,19 @@ const AddUser = (props) => {
                           placeholder={t("phone-optional")}
                           value={formdata.phone}
                           onChange={(e) => handleChange(e)}
+                          className="op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content w-full text-xs"
+                        />
+                      </div>
+                      <div className="mb-3">
+                        <label className="block text-xs text-gray-700 font-semibold">
+                          {"Job Title"}
+                        </label>
+                        <input
+                          type="text"
+                          name="jobtitle"
+                          placeholder={"Enter job title"}
+                          value={formdata.jobtitle}
+                          onChange={handleChange}
                           className="op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content w-full text-xs"
                         />
                       </div>

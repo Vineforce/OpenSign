@@ -5,7 +5,7 @@ export default function reportJson(id) {
   const declineHead = ["Title", "Reason", "Folder", "File", "Owner", "Signers"];
   const iphead = ["Title", "Note", "Folder", "File", "Signers"];
   const contactbook = ["Name", "Email", "Phone"];
-  const dashboardReportHead = ["Title", "File", "Owner", "Signers"];
+  const dashboardReportHead = ["Title", "File", "Owner", "Signers","Additional-document"];
   const templateReport = ["Title", "File", "Owner", "Signers"];
   switch (id) {
     // draft documents report
@@ -301,7 +301,7 @@ export default function reportJson(id) {
             action: "redirect"
           }
         ]
-      };
+      };  
     // Drafts report show on dashboard
     case "kC5mfynCi4":
       return {
@@ -429,6 +429,14 @@ export default function reportJson(id) {
                 btnIcon: "fa-light fa-share-nodes",
                 redirectUrl: "",
                 action: "sharewith"
+              });
+              newItem.subaction.splice(2, 0, {
+                btnId: "btn-sharetemplate-user",
+                btnLabel: "ShareWithUsers",
+                hoverLabel: "Share with users",
+                btnIcon: "fa-light fa-share-nodes",
+                redirectUrl: "",
+                action: "sharewithusers"
               });
               return newItem;
             }

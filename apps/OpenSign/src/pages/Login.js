@@ -24,6 +24,8 @@ import { useTranslation } from "react-i18next";
 import SelectLanguage from "../components/pdf/SelectLanguage";
 
 function Login() {
+  const appName =
+    "Excis";
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -60,7 +62,7 @@ function Login() {
   const checkUserExt = async () => {
     const app = await getAppLogo();
     if (app?.error === "invalid_json") {
-      setErrMsg(t("server-down"));
+      setErrMsg(t("server-down", { appName: appName }));
     } else if (
       app?.user === "not_exist"
     ) {
@@ -97,13 +99,21 @@ function Login() {
           setState({ ...state, loading: true });
           localStorage.setItem("appLogo", appInfo.applogo);
           // Pass the username and password to logIn function
-          const user = await Parse.User.logIn(email, password);
-          if (user) {
-            await Parse.Cloud.run('generateAndSendOTP', { email });
-            setMfaModal(true)
+          const user = await Parse.User.logIn(email, password);         
+          if (user) {            
+            const params = { UserId: user.id, email: email }
+            console.log(params);
+            const res = await Parse.Cloud.run('generateAndSendOTP', params);           
+            if (res === "OTP-SENT") {
+              setMfaModal(true)
+              setState({ ...state, loading: false });
+            }
+            else {
+              //'2FA-NOT-ENABLED'
+              let _user = user.toJSON();
+              proceedToLogin(null,_user);
+            }
           }
-
-          setState({ ...state, loading: false });
         } catch (error) {
           setState({
             ...state,
@@ -144,20 +154,34 @@ function Login() {
       if (result.message === 'Invalid OTP') {
         return showAlert("danger", "Invalid OTP. Please try again.");
       }
+      proceedToLogin(result,null);
+      // // Handle successful login
+      // const user = await Parse.User.become(result.sessionToken);
+      // const _user = user.toJSON();
 
-      // Handle successful login
-      const user = await Parse.User.become(result.sessionToken);
-      const _user = user.toJSON();
+      // // Securely store user information
+      // saveUserData(_user);
 
-      // Securely store user information
-      saveUserData(_user);
-
-      // Fetch user-specific details
-      await fetchUserDetails(_user);
+      // // Fetch user-specific details
+      // await fetchUserDetails(_user);
 
     } catch (error) {
       handleError(error);
     }
+  };
+  const proceedToLogin = async (result, userJsonData) => {
+    // Handle successful login
+    let _user = userJsonData;
+    if (result != null) {
+      const user = await Parse.User.become(result.sessionToken);
+      _user = user.toJSON();
+    }
+
+    // Securely store user information
+    saveUserData(_user);
+
+    // Fetch user-specific details
+    await fetchUserDetails(_user);
   };
 
   // Helper function to show alerts
@@ -298,7 +322,8 @@ function Login() {
           .then(async (extUser) => {
             if (extUser) {
               const IsDisabled = extUser?.get("IsDisabled") || false;
-              if (!IsDisabled) {
+              const IsDeleted = extUser?.get("IsDeleted") || false;
+              if (!IsDisabled && IsDeleted) {
                 const userRole = extUser?.get("UserRole");
                 const menu =
                   userRole &&
@@ -397,7 +422,8 @@ function Login() {
       await Parse.Cloud.run("getUserDetails").then(async (extUser) => {
         if (extUser) {
           const IsDisabled = extUser?.get("IsDisabled") || false;
-          if (!IsDisabled) {
+          const IsDeleted = extUser?.get("IsDeleted") || false;
+          if (!IsDisabled && IsDeleted) {
             const userRole = extUser.get("UserRole");
             const _currentRole = userRole;
             const menu =
@@ -554,7 +580,7 @@ function Login() {
     </div>
   ) : (
     <div>
-      <Title title={"Login Page"} />
+      <Title title="Login" />
       {state.loading && (
         <div
           aria-live="assertive"

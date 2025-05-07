@@ -1,7 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import {
-  themeColor
-} from "../constant/const";
 import { PDFDocument } from "pdf-lib";
 import "../styles/signature.css";
 import Parse from "parse";
@@ -43,7 +40,8 @@ import {
   defaultWidthHeight,
   addWidgetOptions,
   textWidget,
-  compressedFileSize
+  compressedFileSize,
+  mailTemplate
 } from "../constant/Utils";
 import Header from "../components/pdf/PdfHeader";
 import RenderPdf from "../components/pdf/RenderPdf";
@@ -69,6 +67,8 @@ import TextFontSetting from "../components/pdf/TextFontSetting";
 function PdfRequestFiles(
 ) {
   const { t } = useTranslation();
+  const appName =
+    "Excis";
   const [pdfDetails, setPdfDetails] = useState([]);
   const [signedSigners, setSignedSigners] = useState([]);
   const [unsignedSigners, setUnSignedSigners] = useState([]);
@@ -101,6 +101,7 @@ function PdfRequestFiles(
   const [signerObjectId, setSignerObjectId] = useState();
   const [isUiLoading, setIsUiLoading] = useState(false);
   const [isDecline, setIsDecline] = useState({ isDeclined: false });
+  const [isDocDeclined, setIsDocDeclined] = useState(false);
   const [currentSigner, setCurrentSigner] = useState(false);
   const [isAlert, setIsAlert] = useState({ isShow: false, alertMessage: "" });
   const [unSignedWidgetId, setUnSignedWidgetId] = useState("");
@@ -321,6 +322,44 @@ function PdfRequestFiles(
         if (currUserId) {
           setSignerObjectId(currUserId);
         }
+        // Code for Auto populating name of the Signer
+        const contactIdSafe = contactId?.trim() || currUserId;
+        let contactDetail = null;
+        if (contactIdSafe && contactIdSafe.trim() !== '') {
+          contactDetail = await Parse.Cloud.run('getContactJson', { contactId: contactIdSafe });
+        }
+        const contactName = contactDetail?.Name?.trim() || '';
+        if (contactName) {
+          setTimeout(() => {
+            // Update placeholders, but ONLY for the matching signer
+            const updatedPlaceholders = (documentData[0]?.Placeholders ?? []).map(signer => {
+              const signerId = signer?.signerObjId ?? signer?.signerPtr?.objectId;
+              // Skip everyone except the matched signer
+              if (signerId !== contactIdSafe) {
+                return signer;
+              }
+              // This signer matches – patch their “name” fields if they’re still empty
+              const patchedPlaceHolder = signer.placeHolder.map(ph => {
+                const patchedPos = ph.pos.map(pos => {
+                  if (pos?.type === 'name' && (!pos.options?.response || !pos.options.response.trim())) {
+                    return {
+                      ...pos,
+                      options: {
+                        ...pos.options,
+                        response: contactName
+                      }
+                    };
+                  }
+                  return pos;
+                });
+                return { ...ph, pos: patchedPos };
+              });
+              return { ...signer, placeHolder: patchedPlaceHolder };
+            });
+            setSignerPos(updatedPlaceholders);
+          }, 50);
+        } 
+
         if (documentData[0].SignedUrl) {
           setPdfUrl(documentData[0].SignedUrl);
         } else {
@@ -450,38 +489,20 @@ function PdfRequestFiles(
           currDate > expireUpdateDate ||
           !isTourEnabled
         ) {
+          const userId = contactDetail?.UserId?.id || '';
+          if (userId && userId.trim() !== '') {
+            const defaultSignRes = await getDefaultSignature(userId);
+            if (defaultSignRes?.status === "success") {
+              const sign = defaultSignRes?.res?.defaultSignature || "";
+              setDefaultSignImg(sign);
+            }
+          }
           setRequestSignTour(true);
         } else {
           const isEnableOTP = documentData?.[0]?.IsEnableOTP || false;
-          if (!isEnableOTP) {
-            try {
-              const resContact = await axios.post(
-                `${localStorage.getItem("baseUrl")}functions/getcontact`,
-                { contactId: currUserId },
-                {
-                  headers: {
-                    "Content-Type": "application/json",
-                    "X-Parse-Application-Id": localStorage.getItem("parseAppId")
-                  }
-                }
-              );
-              const contact = resContact?.data?.result;
-              setContractName("_Contactbook");
-              setSignerUserId(contact?.objectId);
-              const tourData = contact?.TourStatus && contact?.TourStatus;
-              if (tourData && tourData.length > 0) {
-                const checkTourRequest =
-                  tourData?.some((data) => data?.requestSign) || false;
-                setTourStatus(tourData);
-                setRequestSignTour(checkTourRequest);
-              } else {
-                setRequestSignTour(false);
-              }
-            } catch (err) {
-              console.log("err while getting tourstatus", err);
-            }
-          } else {
-            //else condition to check current user exist in contracts_Users class and check tour message status
+          const sessionToken = localStorage.getItem("accesstoken");
+          if (sessionToken) {
+            //condition to check current user exist in contracts_Users class and check tour message status
             //if not then check user exist in contracts_Contactbook class and check tour message status
             const res = await contractUsers();
             if (res === "Error: Something went wrong!") {
@@ -537,6 +558,33 @@ function PdfRequestFiles(
               } else if (res.length === 0) {
                 setHandleError(t("user-not-exist"));
               }
+            }
+          } else if (!isEnableOTP) {
+            try {
+              const resContact = await axios.post(
+                `${localStorage.getItem("baseUrl")}functions/getcontact`,
+                { contactId: currUserId },
+                {
+                  headers: {
+                    "Content-Type": "application/json",
+                    "X-Parse-Application-Id": localStorage.getItem("parseAppId")
+                  }
+                }
+              );
+              const contact = resContact?.data?.result;
+              setContractName("_Contactbook");
+              setSignerUserId(contact?.objectId);
+              const tourData = contact?.TourStatus && contact?.TourStatus;
+              if (tourData && tourData.length > 0) {
+                const checkTourRequest =
+                  tourData?.some((data) => data?.requestSign) || false;
+                setTourStatus(tourData);
+                setRequestSignTour(checkTourRequest);
+              } else {
+                setRequestSignTour(false);
+              }
+            } catch (err) {
+              console.log("err while getting tourstatus", err);
             }
           }
         }
@@ -700,10 +748,38 @@ function PdfRequestFiles(
                 //get all required type widgets except checkbox and radio
                 const requiredWidgets = checkUser[0].placeHolder[i].pos.filter(
                   (position) =>
-                    position.options?.status === "required" &&
-                    position.type !== radioButtonWidget &&
-                    position.type !== "checkbox"
-                );
+                  position.options?.status === "required" &&
+                  position.type !== radioButtonWidget &&
+                  position.type !== "checkbox"
+                )// code to add current date for current signer
+                .map((position) => {
+                  if (position.type === "date" && !position.options.response) {
+                    const today = new Date();
+                    const format = position.options?.validation?.format || "MM/dd/yyyy";
+                    const formatDate = (date, format) => {
+                      const day = String(date.getDate()).padStart(2, '0');
+                      const month = String(date.getMonth() + 1).padStart(2, '0');
+                      const year = date.getFullYear();
+                      const monthNameShort = date.toLocaleString('default', { month: 'short' }); 
+                      const monthNameLong = date.toLocaleString('default', { month: 'long' }); 
+              
+                      switch (format) {
+                        case "MM/dd/yyyy": return `${month}/${day}/${year}`;
+                        case "dd-MM-yyyy": return `${day}-${month}-${year}`;
+                        case "yyyy-MM-dd": return `${year}-${month}-${day}`;
+                        case "MM.dd.yyyy": return `${month}.${day}.${year}`;
+                        case "dd MMM yyyy": return `${day} ${monthNameShort} ${year}`;
+                        case "MMM dd, yyyy": return `${monthNameShort} ${day}, ${year}`;
+                        case "MMMM dd, yyyy": return `${monthNameLong} ${day}, ${year}`;
+                        case "dd MMMM, yyyy": return `${day} ${monthNameLong}, ${year}`;
+                        default: return `${month}/${day}/${year}`; // Fallback
+                      }
+                    };              
+                    position.options.response = formatDate(today, format);
+                  }
+                  return position;
+                });
+                // code to add current date ended
                 if (requiredWidgets && requiredWidgets?.length > 0) {
                   let checkSigned;
                   for (let i = 0; i < requiredWidgets?.length; i++) {
@@ -832,16 +908,16 @@ function PdfRequestFiles(
                         "en-US",
                         { day: "numeric", month: "long", year: "numeric" }
                       );
-                      let senderEmail = pdfDetails?.[0].ExtUserPtr.Email;
+                      let senderEmail =
+                        pdfDetails?.[0]?.ExtUserPtr?.Email;
                       let senderPhone = pdfDetails?.[0]?.ExtUserPtr?.Phone;
-                      const senderName = `${pdfDetails?.[0].ExtUserPtr.Name}`;
-
+                      const senderName =
+                        pdfDetails?.[0].ExtUserPtr.Name;
+                      const documentName = pdfDetails?.[0].Name;
                       try {
-                        const imgPng =
+                                                const imgPng =
                           "https://www.excis.com/assets/images/main-logo.png";
-                        let url = `${localStorage.getItem(
-                          "baseUrl"
-                        )}functions/sendmailv3`;
+                        let url = `${localStorage.getItem("baseUrl")}functions/sendmailv3`;
                         const headers = {
                           "Content-Type": "application/json",
                           "X-Parse-Application-Id":
@@ -868,7 +944,6 @@ function PdfRequestFiles(
                         const orgName = pdfDetails[0]?.ExtUserPtr.Company
                           ? pdfDetails[0].ExtUserPtr.Company
                           : "";
-                        const themeBGcolor = themeColor;
                         let replaceVar;
                         if (
                           requestBody &&
@@ -884,11 +959,9 @@ function PdfRequestFiles(
                             "</body> </html>";
 
                           const variables = {
-                            document_title: pdfDetails?.[0].Name,
-                            sender_name:
-                              senderName,
-                            sender_mail:
-                              senderEmail,
+                            document_title: documentName,
+                            sender_name: senderName,
+                            sender_mail: senderEmail,
                             sender_phone: senderPhone,
                             receiver_name: user?.Name || "",
                             receiver_email: user.Email,
@@ -903,41 +976,26 @@ function PdfRequestFiles(
                             variables
                           );
                         }
-
+                        const mailparam = {
+                          senderName: senderName,
+                          senderMail: senderEmail,
+                          title: documentName,
+                          organization: orgName,
+                          localExpireDate: localExpireDate,
+                          sigingUrl: signPdf
+                        };
                         let params = {
-                          replyto:
-                            senderEmail ||
-                            "",
+                          replyto: senderEmail || "",
                           extUserId: extUserId,
                           recipient: user.Email,
                           subject: replaceVar?.subject
                             ? replaceVar?.subject
-                            : `${pdfDetails?.[0].ExtUserPtr.Name} has requested you to sign "${pdfDetails?.[0].Name}"`,
+                            : mailTemplate(mailparam).subject,
                           from:
                             senderEmail,
                           html: replaceVar?.body
                             ? replaceVar?.body
-                            : "<html><head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8' /> </head>   <body> <div style='background-color: #f5f5f5; padding: 20px'=> <div   style=' box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 12px;background: white;padding-bottom: 20px;'> <div style='padding:10px 10px 0 10px'><img src=" +
-                              imgPng +
-                              " height='50' style='padding: 20px,width:170px,height:40px' /></div>  <div  style=' padding: 2px;font-family: system-ui;background-color:" +
-                              themeBGcolor +
-                              ";'><p style='font-size: 20px;font-weight: 400;color: white;padding-left: 20px;' > Digital Signature Request</p></div><div><p style='padding: 20px;font-family: system-ui;font-size: 14px;   margin-bottom: 10px;'> " +
-                              pdfDetails?.[0].ExtUserPtr.Name +
-                              " has requested you to review and sign <strong> " +
-                              pdfDetails?.[0].Name +
-                              "</strong>.</p><div style='padding: 5px 0px 5px 25px;display: flex;flex-direction: row;justify-content: space-around;'><table> <tr> <td style='font-weight:bold;font-family:sans-serif;font-size:15px'>Sender</td> <td> </td> <td  style='color:#626363;font-weight:bold'>" +
-                              senderEmail +
-                              "</td></tr><tr><td style='font-weight:bold;font-family:sans-serif;font-size:15px'>Organization</td> <td> </td><td style='color:#626363;font-weight:bold'> " +
-                              orgName +
-                              "</td></tr> <tr> <td style='font-weight:bold;font-family:sans-serif;font-size:15px'>Expires on</td><td> </td> <td style='color:#626363;font-weight:bold'>" +
-                              localExpireDate +
-                              "</td></tr><tr> <td></td> <td> </td></tr></table> </div> <div style='margin-left:70px'><a target=_blank href=" +
-                              signPdf +
-                              "> <button style='padding: 12px 12px 12px 12px;background-color: #d46b0f;color: white;  border: 0px;box-shadow: rgba(0, 0, 0, 0.05) 0px 6px 24px 0px,rgba(0, 0, 0, 0.08) 0px 0px 0px 1px;font-weight:bold;margin-top:30px'>Sign here</button></a> </div> <div style='display: flex; justify-content: center;margin-top: 10px;'> </div></div></div><div><p> This is an automated email from Excis. For any queries regarding this email, please contact the sender " +
-                              senderEmail +
-                              " directly.If you think this email is inappropriate or spam, you may file a complaint with Excis   <a href= " +
-                              openSignUrl +
-                              " target=_blank>here</a>.</p> </div></div></body> </html>"
+                            : mailTemplate(mailparam).body
                         };
                         await axios.post(url, params, { headers: headers });
                       } catch (error) {
@@ -971,7 +1029,7 @@ function PdfRequestFiles(
                 setIsAlert({
                   title: "Error",
                   isShow: true,
-                  alertMessage: t("pdf-uncompatible")
+                  alertMessage: t("pdf-uncompatible", { appName: appName })
                 });
               }
             } catch (err) {
@@ -1309,7 +1367,14 @@ function PdfRequestFiles(
         const res = result.data;
         if (res) {
           const currentDecline = { currnt: "YouDeclined", isDeclined: true };
+          // send decline mail to document owner 
+          const Declineparams = {
+            docId: pdfDetails?.[0].objectId,
+            userId: userId
+          };     
+          const declineNotificationEmailStatus = await Parse.Cloud.run('sendMailOnDecline',Declineparams);          
           setIsDecline(currentDecline);
+          setIsDocDeclined(true);
           setIsUiLoading(false);
         }
       })
@@ -1954,6 +2019,7 @@ function PdfRequestFiles(
                   footerMessage={isDecline.currnt === "Sure"}
                   declineDoc={declineDoc}
                   setIsDecline={setIsDecline}
+                  docSignDeclined={isDocDeclined}
                 />
                 {/* this modal is used for show expired alert */}
                 <PdfDeclineModal

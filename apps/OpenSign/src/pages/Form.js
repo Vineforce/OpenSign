@@ -5,6 +5,7 @@ import Parse from "parse";
 import Alert from "../primitives/Alert";
 import SelectFolder from "../components/shared/fields/SelectFolder";
 import SignersInput from "../components/shared/fields/SignersInput";
+import ApproversInput from "../components/shared/fields/ApproversInput";
 import Title from "../components/Title";
 import PageNotFound from "./PageNotFound";
 import { SaveFileSize } from "../constant/saveFileSize";
@@ -36,12 +37,15 @@ function Form() {
 }
 
 const Forms = (props) => {
+  const appName =
+    "Excis";
   const { t } = useTranslation();
   const maxFileSize = 20;
   const abortController = new AbortController();
   const inputFileRef = useRef(null);
   const navigate = useNavigate();
   const [signers, setSigners] = useState([]);
+  const [approvers, setApprovers] = useState([]);
   const [folder, setFolder] = useState({ ObjectId: "", Name: "" });
   const [formData, setFormData] = useState({
     Name: "",
@@ -360,10 +364,6 @@ const Forms = (props) => {
         object.set("Description", formData?.Description);
         object.set("Note", formData?.Note);
         if (props.title === "Request Signatures") {
-          object.set(
-            "TimeToCompleteDays",
-            parseInt(formData?.TimeToCompleteDays)
-          );
           if (
             extUserData?.TenantId?.RequestBody &&
             extUserData?.TenantId?.RequestSubject
@@ -380,6 +380,10 @@ const Forms = (props) => {
           object.set("AutomaticReminders", formData.autoreminder);
           object.set("RemindOnceInEvery", parseInt(formData.remindOnceInEvery));
           object.set("IsTourEnabled", isTourEnabled);
+          object.set(
+            "TimeToCompleteDays",
+            parseInt(formData?.TimeToCompleteDays)
+          );
             object.set("AllowModifications", false);
             object.set("IsEnableOTP", false);
             if (formData.NotifyOnSignatures !== undefined) {
@@ -401,6 +405,11 @@ const Forms = (props) => {
         if (signers && signers.length > 0) {
           object.set("Signers", signers);
         }
+
+        if (approvers && approvers.length > 0) {
+          object.set("Approvers", approvers);
+        }
+
         if (bcc && bcc.length > 0) {
           const Bcc = bcc.map((x) => ({
             __type: "Pointer",
@@ -449,11 +458,6 @@ const Forms = (props) => {
           setFileUpload("");
           setpercentage(0);
           navigate(`/${props?.redirectRoute}/${res.id}`);
-          setIsAlert((obj) => ({
-            ...obj,
-            type: "success",
-            message: `${props.msgVar} created successfully!`
-          }));
         }
       } catch (err) {
         console.log("err ", err);
@@ -466,7 +470,7 @@ const Forms = (props) => {
       alert(t("file-alert-3"));
     }
   };
-
+  
   const handleFolder = (data) => {
     setFolder(data);
   };
@@ -478,6 +482,19 @@ const Forms = (props) => {
         objectId: x
       }));
       setSigners(updateSigners);
+    }
+  };
+
+  const handleApprovers = (data) => {
+    //--console.log(data);
+    if (data && data.length > 0) {
+      const updateApprovers = data.map((x) => ({        
+        contracts_Users_Id: x,
+        HasApproved:'ApprovalPending',
+        ApprovedRejectedOn: '',
+        Comment:''
+      }));
+      setApprovers(updateApprovers);
     }
   };
 
@@ -790,6 +807,16 @@ const Forms = (props) => {
                 required
               />
             )}
+
+            {(props.approvers || props.title === "New Template" || props.title === "Request Signatures") &&(
+              <ApproversInput
+                label={("Approvers")}
+                onChange={handleApprovers}
+                isReset={isReset}
+                helptextZindex={50}
+                // required Uncomment if you want Approver mandatory
+              />
+            )}
             <div className="text-xs mt-2">
               <label className="block">
                 {t("report-heading.Note")}
@@ -991,7 +1018,7 @@ const Forms = (props) => {
                         </>
                       )}
                       <div className="overflow-y-auto z-[40] transition-all">
-                        {props.title === "Request Signatures" && (
+                        {props.title !== "Sign yourself" && (
                           <div className="text-xs mt-2">
                             <label className="block">
                               {t("time-to-complete")}
@@ -1093,7 +1120,9 @@ const Forms = (props) => {
                                 </li>
                               </ol>
                             </p>
-                            <p>{t("istourenabled-help.p3")}</p>
+                            <p>
+                              {t("istourenabled-help.p3", { appName: appName })}
+                            </p>
                           </div>
                         </Tooltip>
                       </label>
@@ -1123,11 +1152,7 @@ const Forms = (props) => {
                       </div>
                     </div>
                     <div className="text-xs mt-3">
-                      <label
-                        className={
-                          "block"
-                        }
-                      >
+                      <label className="block">
                         {t("notify-on-signatures")}
                         <a data-tooltip-id="nos-tooltip" className="ml-1">
                           <sup>
@@ -1147,7 +1172,7 @@ const Forms = (props) => {
                       <div className="flex flex-col md:flex-row md:gap-4">
                         <div
                           className={
-                            "flex items-center gap-2 ml-2 mb-1"
+                            `flex items-center gap-2 ml-2 mb-1`
                           }
                         >
                           <input
@@ -1160,7 +1185,7 @@ const Forms = (props) => {
                         </div>
                         <div
                           className={
-                            "flex items-center gap-2 ml-2 mb-1"
+                            `flex items-center gap-2 ml-2 mb-1`
                           }
                         >
                           <input
