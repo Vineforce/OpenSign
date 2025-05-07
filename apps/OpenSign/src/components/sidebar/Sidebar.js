@@ -40,7 +40,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
             if (item.title === "Settings") {
               // Make a shallow copy of the item
               const newItem = { ...item };
-                const arr = newItem.children.slice(0, 1);
+                const arr = newItem.children.slice(0, 2);
                 newItem.children = [...arr, ...subSetting];
               return newItem;
             }
@@ -52,7 +52,8 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
               if (item.title === "Settings") {
                 // Make a shallow copy of the item
                 const newItem = { ...item };
-                const arr = newItem.children.slice(0, 1);
+                // Added additional option
+                const arr = newItem.children.slice(0, 2);
                 newItem.children = arr;
                 return newItem;
               }

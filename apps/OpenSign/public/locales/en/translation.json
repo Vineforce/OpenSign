@@ -113,7 +113,8 @@
       "Preferences": "Preferences",
       "Teams": "Teams",
       "Team-update-successfully": "Team Updated successfully.",
-      "Users": "Users"
+      "Users": "Users",
+      "TwoFactorAuthentication":"Manage 2FA"
     },
     "Document Sign Approval": "Document Approval",
     "Document Sign Approval-Children":{

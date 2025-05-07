@@ -52,6 +52,12 @@ import generateCertificatebydocId from './parsefunction/generateCertificatebydoc
 import fileUpload from './parsefunction/fileUpload.js';
 import getUserListByOrg from './parsefunction/getUserListByOrg.js';
 import editContact from './parsefunction/editContact.js';
+import multiFactorAuthentication from './parsefunction/MultiFactorAuthentication.js';
+import MultiFactorAuthenticationSetting from './parsefunction/MultiFactorAuthenticationSetting.js';
+
+const { generateAndSendOTP, AuthLoginWithMFA } = multiFactorAuthentication;
+const { ManageTwoFactorAuthentication, IsTwoFactorAuthenticationEnabled } = MultiFactorAuthenticationSetting;
+
 import deleteUser from './parsefunction/deleteUser.js';
 import sendMailOnDecline from './parsefunction/SendMailOnDecline.js';
 import updateUseTemplateDate from './parsefunction/pdf/updateUseTemplateDate.js';
@@ -127,6 +133,9 @@ Parse.Cloud.define('generatecertificate', generateCertificatebydocId);
 Parse.Cloud.define('fileupload', fileUpload);
 Parse.Cloud.define('getuserlistbyorg', getUserListByOrg);
 Parse.Cloud.define('editcontact', editContact);
+Parse.Cloud.define('generateAndSendOTP', generateAndSendOTP);
+
+Parse.Cloud.define('AuthLoginWithMFA',AuthLoginWithMFA)
 Parse.Cloud.define('deleteUser', async (request) => {
     const { contractsUserId } = request.params;
     return deleteUser(contractsUserId);
@@ -153,3 +162,5 @@ Parse.Cloud.define('updateUseTemplateDate',updateUseTemplateDate);
 Parse.Cloud.define('shareWithUsers',shareWithUsers);
 Parse.Cloud.define('getContactJson', getContactJson);
 Parse.Cloud.define('editUser',editUser);
+Parse.Cloud.define('ManageTwoFactorAuthentication',ManageTwoFactorAuthentication);
+Parse.Cloud.define("IsTwoFactorAuthenticationEnabled",IsTwoFactorAuthenticationEnabled);
