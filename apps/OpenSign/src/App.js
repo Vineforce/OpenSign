@@ -23,6 +23,7 @@ import ValidateSession from "./primitives/ValidateSession";
 import DocumentSignApproved from "./pages/DocumentSignApproved";
 import DocumentSignPending from "./pages/DocumentSignPending";
 import DocumentSignRejected from "./pages/DocumentSignRejected";
+import ManageTwoFactorAuthentication from "./pages/ManageTwoFactorAuthentication"
 
 const DebugPdf = lazy(() => import("./pages/DebugPdf"));
 const ForgetPassword = lazy(() => import("./pages/ForgetPassword"));
@@ -177,6 +178,7 @@ function App() {
               <Route path="/documentsignapproved" element={<DocumentSignApproved />} />
               <Route path="/documentsignpending" element={<DocumentSignPending />} />
               <Route path="/documentsignrejected" element={<DocumentSignRejected />} />
+              <Route path="/twofactorauthentication" element={<ManageTwoFactorAuthentication />} />
             </Route>
             <Route path="/success" element={<DocSuccessPage />} />
             <Route path="*" element={<PageNotFound />} />

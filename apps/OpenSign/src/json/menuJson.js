@@ -185,6 +185,14 @@ const sidebarList = [
     objectId: null,
     children: [
       {
+        icon: "fa-light fa-user-shield fa-fw",
+        title: "TwoFactorAuthentication",
+        target: "_self",
+        pageType: "",
+        description: "",
+        objectId: "twofactorAuthentication" // this is the route
+      },
+      {
         icon: "fa-light fa-pen-fancy",
         title: "My Signature",
         target: "_self",
