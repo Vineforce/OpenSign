@@ -102,7 +102,6 @@ function Login() {
           const user = await Parse.User.logIn(email, password);         
           if (user) {            
             const params = { UserId: user.id, email: email }
-            console.log(params);
             const res = await Parse.Cloud.run('generateAndSendOTP', params);           
             if (res === "OTP-SENT") {
               setMfaModal(true)
@@ -716,11 +715,10 @@ function Login() {
                 <label
                   htmlFor="OTP"
                   style={{ display: "flex" }}
-                  className="block text-xs text-gray-700 font-semibold"
-                >
-                  {t("Enter OTP")}
-                  <span className="text-[red] text-[13px]">*</span>
+                  className="block text-xs text-gray-700 font-semibold">
+                  An OTP has been sent to your registered email address. Please enter it below to proceed with verification                                  
                 </label>
+                 <p>Enter OTP <span className="text-[red] text-[13px]">*</span></p>                  
                 <input
                   type="text"
                   className="op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content w-full text-xs"

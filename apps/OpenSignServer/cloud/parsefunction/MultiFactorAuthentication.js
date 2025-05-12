@@ -20,7 +20,16 @@ async function generateAndSendOTP(request) {
   if (twoFactorEnabled) {
     const otp = generateOTP();
     await saveOTPToParse(request.params.email,request.params.UserId, otp);
-    await sendOTPEmail(request.params.email, otp);
+
+    // get user details     
+     const userQuery = new Parse.Query("_User");
+     const user = await userQuery.get(request.params.UserId, { useMasterKey: true });
+     let name = user.get("name");
+     if (!name || name.trim() === "") {
+      name = "User";
+     }
+     
+    await sendOTPEmail(request.params.email, otp, name);
     return 'OTP-SENT'
   }
   else {
@@ -63,7 +72,7 @@ async function saveOTPToParse(email,userId, otp) {
   }
 }
 
-async function sendOTPEmail(email, otp) {
+async function sendOTPEmail(email, otp, name) {
   const mailLogo = 'https://www.excis.com/assets/images/main-logo.png';
   const subject = 'Excis - Your One-Time Password (OTP) for Login';
 
@@ -79,10 +88,10 @@ async function sendOTPEmail(email, otp) {
             <p style='font-size:20px;font-weight:400;'>Your OTP for Login</p>
           </div>
           <div style='padding:20px;font-family:system-ui;font-size:14px'>
-            <p>Dear User,</p>
+            <p>Dear ${name},</p>
             <p>We have received a request to log in to your account. Please use the One-Time Password (OTP) below to complete your login:</p>
             <p style='font-size:18px;font-weight:bold;color:#333;'>${otp}</p>
-            <p>This OTP is valid for a short time, so please use it promptly. If you did not request this, please ignore this email.</p>
+            <p>This OTP is valid for five minutes, so please use it promptly. If you did not request this, please ignore this email.</p>
             <p>If you have any questions, feel free to contact us.</p>
             <p style='font-size:12px;color:#888;'>This is an automated email, please do not reply directly to this message.</p>
           </div>
