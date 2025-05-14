@@ -541,14 +541,20 @@ export const signPdfFun = async (
     const imagebase64 = await changeImageWH(base64Sign);
     //remove suffiix of base64 (without type)
     const suffixbase64 = imagebase64 && imagebase64.split(",").pop();
+    
+    const resGetPublicIP = await fetch("https://api.ipify.org?format=json");
+    const userPublicIP = await resGetPublicIP.json();
+
 
     const params = {
       pdfFile: base64Url,
       docId: documentId,
       userId: signerObjectId,
       isCustomCompletionMail: isCustomCompletionMail,
-      signature: suffixbase64
+      signature: suffixbase64,
+      userPublicIP:userPublicIP.ip,
     };
+    
     const resSignPdf = await Parse.Cloud.run("signPdf", params);
     if (resSignPdf) {
       const signedPdf = JSON.parse(JSON.stringify(resSignPdf));
