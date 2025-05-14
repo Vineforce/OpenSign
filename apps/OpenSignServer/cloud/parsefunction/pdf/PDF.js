@@ -307,7 +307,9 @@ async function sendMailsaveCertifcate(
  */
 async function PDF(req) {
   try {
-    const userIP = req.headers['x-real-ip']; // client IPaddress
+    //const userIP = req.headers['x-real-ip']; // client IPaddress
+    const userPublicIP = req.params.userPublicIP;
+    let userIP = (userPublicIP && userPublicIP.trim()) ? userPublicIP.trim() : req.headers['x-real-ip'];
     const docId = req.params.docId;
     const reqUserId = req.params.userId;
     const isCustomMail = req.params.isCustomCompletionMail || false;
