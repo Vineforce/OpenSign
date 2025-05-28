@@ -54,6 +54,7 @@ import getUserListByOrg from './parsefunction/getUserListByOrg.js';
 import editContact from './parsefunction/editContact.js';
 import multiFactorAuthentication from './parsefunction/MultiFactorAuthentication.js';
 import MultiFactorAuthenticationSetting from './parsefunction/MultiFactorAuthenticationSetting.js';
+import getJobTitle from './parsefunction/getJobTitle.js';
 
 const { generateAndSendOTP, AuthLoginWithMFA } = multiFactorAuthentication;
 const { ManageTwoFactorAuthentication, IsTwoFactorAuthenticationEnabled } = MultiFactorAuthenticationSetting;
@@ -164,3 +165,4 @@ Parse.Cloud.define('getContactJson', getContactJson);
 Parse.Cloud.define('editUser',editUser);
 Parse.Cloud.define('ManageTwoFactorAuthentication',ManageTwoFactorAuthentication);
 Parse.Cloud.define("IsTwoFactorAuthenticationEnabled",IsTwoFactorAuthenticationEnabled);
+Parse.Cloud.define("getJobTitle",getJobTitle);
