@@ -322,14 +322,21 @@ function PdfRequestFiles(
         if (currUserId) {
           setSignerObjectId(currUserId);
         }
-        // Code for Auto populating name of the Signer
-        const contactIdSafe = contactId?.trim() || currUserId;
+        // Code for Auto populating name and job title of the Signer
+        const contactIdSafe = contactId?.trim() || currUserId?.trim();
         let contactDetail = null;
-        if (contactIdSafe && contactIdSafe.trim() !== '') {
+        let contractsUser_Detail = null;
+        if (contactIdSafe) {
           contactDetail = await Parse.Cloud.run('getContactJson', { contactId: contactIdSafe });
+          const userId = contactDetail?.UserId?.id;          
+          if (userId) {
+            contractsUser_Detail = await Parse.Cloud.run('getJobTitle', { UserId: userId });
+          }
         }
         const contactName = contactDetail?.Name?.trim() || '';
-        if (contactName) {
+        const jobTitle = contractsUser_Detail?.JobTitle?.trim() || '';        
+
+        if (contactName || jobTitle) {
           setTimeout(() => {
             // Update placeholders, but ONLY for the matching signer
             const updatedPlaceholders = (documentData[0]?.Placeholders ?? []).map(signer => {
@@ -338,15 +345,25 @@ function PdfRequestFiles(
               if (signerId !== contactIdSafe) {
                 return signer;
               }
-              // This signer matches – patch their “name” fields if they’re still empty
+              // This signer matches – patch their “name” and "job title" fields if they’re still empty
               const patchedPlaceHolder = signer.placeHolder.map(ph => {
                 const patchedPos = ph.pos.map(pos => {
-                  if (pos?.type === 'name' && (!pos.options?.response || !pos.options.response.trim())) {
+                  if (pos?.type === 'name' && contactName && (!pos.options?.response || !pos.options.response.trim())) {
                     return {
                       ...pos,
                       options: {
                         ...pos.options,
                         response: contactName
+                      }
+                    };
+                  }
+
+                  if (pos?.type === 'job title' && jobTitle && (!pos.options?.response || !pos.options.response.trim())) {
+                    return {
+                      ...pos,
+                      options: {
+                        ...pos.options,
+                        response: jobTitle
                       }
                     };
                   }
