@@ -19,7 +19,7 @@ export default async function getJobTitle(request) {
 
         const userPointer = Parse.Object.extend('_User').createWithoutData(userId);
         ContractsUserQuery.equalTo('UserId', userPointer);
-
+        ContractsUserQuery.select("JobTitle");
         const contractsUserRes = await ContractsUserQuery.first({ useMasterKey: true });
         return contractsUserRes ? contractsUserRes?.toJSON() : {};
 
